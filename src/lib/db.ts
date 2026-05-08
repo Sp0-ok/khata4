@@ -126,6 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
   invoiceCounter: 1,
   theme: "system",
   onboarded: false,
+  invoiceWatermark: true,
 };
 
 export const EXPENSE_CATEGORIES = [

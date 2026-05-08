@@ -44,7 +44,7 @@ function NewParty() {
       const id = await db.parties.add({
         name: name.trim(), phone: phone.trim() || undefined,
         email: email.trim() || undefined, address: address.trim() || undefined,
-        notes: notes.trim() || undefined, type, photo,
+        notes: notes.trim() || undefined, photo,
         openingBalance: parseFloat(opening) || 0,
         createdAt: now, updatedAt: now,
       });

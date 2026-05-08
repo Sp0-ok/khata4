@@ -61,13 +61,19 @@ function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
-          style={{ background: "var(--gradient-primary)" }}
+          style={{
+            background: net < 0
+              ? "linear-gradient(135deg, var(--debit), oklch(0.5 0.18 25))"
+              : "var(--gradient-primary)",
+          }}
         >
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="flex items-center gap-2 text-xs opacity-90">
             <Wallet className="h-3.5 w-3.5" /> Net Balance · Parties
           </div>
-          <div className="mt-1 text-3xl font-bold tabular">{format(net)}</div>
+          <div className="mt-1 text-3xl font-bold tabular">
+            {net < 0 ? "− " : ""}{format(Math.abs(net))}
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Stat label="You'll get" value={format(receivable)} icon={<ArrowDownLeft className="h-4 w-4" />} />
             <Stat label="You'll give" value={format(payable)} icon={<ArrowUpRight className="h-4 w-4" />} />

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
-import { ChevronLeft, FileDown, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
+import { ChevronLeft, FileDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -89,6 +89,9 @@ function InvoiceDetail() {
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-accent"><MoreVertical className="h-5 w-5" /></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate({ to: "/invoices/new", search: { id: iid } })}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit invoice
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onPDF}><FileDown className="mr-2 h-4 w-4" /> Download PDF</DropdownMenuItem>
               <DropdownMenuItem onClick={onWhatsApp}><MessageCircle className="mr-2 h-4 w-4" /> Share on WhatsApp</DropdownMenuItem>
               <AlertDialog>

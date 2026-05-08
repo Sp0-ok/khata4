@@ -92,6 +92,8 @@ function Reports() {
     borderRadius: 12, fontSize: 12, color: "var(--foreground)",
   };
   const fmt = (v: number) => `${symbol} ${v.toLocaleString()}`;
+  const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+  const tickFmt = (v: number) => compact.format(v);
 
   const periodLabel = period === "all" ? "All time" : `Last ${PERIOD_LABEL[period]}`;
 
@@ -145,7 +147,7 @@ function Reports() {
                     <BarChart data={monthlyParties} barSize={12}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                      <YAxis tickLine={false} axisLine={false} fontSize={10} width={56} tickFormatter={tickFmt} />
                       <Tooltip contentStyle={tooltipStyle} formatter={fmt} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar name="Received" dataKey="received" fill="var(--credit)" radius={[6, 6, 0, 0]} />
@@ -165,7 +167,7 @@ function Reports() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                      <YAxis tickLine={false} axisLine={false} fontSize={10} width={56} tickFormatter={tickFmt} />
                       <Tooltip contentStyle={tooltipStyle} formatter={fmt} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Area type="monotone" name="Received" dataKey="received" stroke="var(--credit)" strokeWidth={2.5} fill="url(#gReceived)" />
@@ -214,7 +216,7 @@ function Reports() {
                     <BarChart data={monthlyBiz} barSize={12}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                      <YAxis tickLine={false} axisLine={false} fontSize={10} width={56} tickFormatter={tickFmt} />
                       <Tooltip contentStyle={tooltipStyle} formatter={fmt} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar name="Sales" dataKey="sales" fill="var(--credit)" radius={[6, 6, 0, 0]} />
@@ -224,7 +226,7 @@ function Reports() {
                     <LineChart data={monthlyBiz}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                      <YAxis tickLine={false} axisLine={false} fontSize={10} width={56} tickFormatter={tickFmt} />
                       <Tooltip contentStyle={tooltipStyle} formatter={fmt} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line type="monotone" name="Sales" dataKey="sales" stroke="var(--credit)" strokeWidth={2.5} dot={{ r: 3 }} />

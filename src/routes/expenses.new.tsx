@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -16,12 +16,15 @@ import { useCurrency } from "@/lib/hooks";
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
 export const Route = createFileRoute("/expenses/new")({
+  validateSearch: (s: Record<string, unknown>) => ({ id: s.id ? Number(s.id) : undefined }),
   head: () => ({ meta: [{ title: "Add expense — Hisaab Kitaab" }] }),
   component: NewExpense,
 });
 
 function NewExpense() {
   const navigate = useNavigate();
+  const { id: editId } = useSearch({ from: "/expenses/new" });
+  const isEdit = editId != null;
   const { symbol } = useCurrency();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -32,6 +35,17 @@ function NewExpense() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!isEdit) return;
+    db.expenses.get(editId!).then(e => {
+      if (!e) { toast.error("Expense not found"); navigate({ to: "/expenses" }); return; }
+      setTitle(e.title); setAmount(String(e.amount)); setCategory(e.category);
+      setVendor(e.vendor || ""); setMethod(e.method);
+      setDate(new Date(e.date).toISOString().slice(0, 10));
+      setNotes(e.notes || "");
+    });
+  }, [isEdit, editId, navigate]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error("Title is required");
@@ -39,7 +53,7 @@ function NewExpense() {
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     setSaving(true);
     try {
-      await db.expenses.add({
+      const payload = {
         title: title.trim(),
         amount: amt,
         category,
@@ -47,9 +61,14 @@ function NewExpense() {
         method,
         date: new Date(date).getTime(),
         notes: notes.trim() || undefined,
-        createdAt: Date.now(),
-      });
-      toast.success("Expense saved");
+      };
+      if (isEdit) {
+        await db.expenses.update(editId!, payload);
+        toast.success("Expense updated");
+      } else {
+        await db.expenses.add({ ...payload, createdAt: Date.now() });
+        toast.success("Expense saved");
+      }
       navigate({ to: "/expenses" });
     } catch (err: any) {
       toast.error(err.message || "Failed");
@@ -59,7 +78,7 @@ function NewExpense() {
   return (
     <AppShell hideNav>
       <PageHeader
-        title="Add expense"
+        title={isEdit ? "Edit expense" : "Add expense"}
         back={<Link to="/expenses" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
       <form onSubmit={submit} className="space-y-4 px-4 pb-8 pt-4">
@@ -94,7 +113,7 @@ function NewExpense() {
         </Field>
         <Field label="Payment method">
           <Select value={method} onValueChange={v => setMethod(v as PaymentMethod)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
             <SelectContent>
               {methods.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
             </SelectContent>
@@ -106,7 +125,7 @@ function NewExpense() {
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">
           <Button type="submit" disabled={saving} className="h-12 w-full text-base font-semibold">
-            {saving ? "Saving…" : "Save expense"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Save expense"}
           </Button>
         </div>
       </form>

@@ -81,6 +81,7 @@ export interface Settings {
   pinHash?: string;
   onboarded: boolean;
   logo?: string;
+  invoiceWatermark?: boolean;
 }
 
 class LedgerDB extends Dexie {
@@ -125,6 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
   invoiceCounter: 1,
   theme: "system",
   onboarded: false,
+  invoiceWatermark: true,
 };
 
 export const EXPENSE_CATEGORIES = [

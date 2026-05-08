@@ -13,17 +13,13 @@ import {
 import {
   Tabs, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
-export const Route = createFileRoute("/customers/$id/edit/$txnId")({
+export const Route = createFileRoute("/customers/$id/txn/$txnId")({
   head: () => ({ meta: [{ title: "Edit transaction — Hisaab Kitaab" }] }),
   component: EditTxn,
 });
@@ -39,7 +35,6 @@ function EditTxn() {
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loaded, setLoaded] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -54,18 +49,14 @@ function EditTxn() {
     });
   }, [txnId, id, navigate]);
 
-  const tryConfirm = (e: React.FormEvent) => {
+  const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
-    setConfirmOpen(true);
-  };
-
-  const doSave = async () => {
     setSaving(true);
     try {
       await db.transactions.update(Number(txnId), {
-        type, amount: parseFloat(amount),
+        type, amount: amt,
         note: note.trim() || undefined, method,
         date: new Date(date).getTime(),
       });
@@ -74,7 +65,7 @@ function EditTxn() {
       navigate({ to: "/customers/$id", params: { id } });
     } catch (err: any) {
       toast.error(err.message || "Failed");
-    } finally { setSaving(false); setConfirmOpen(false); }
+    } finally { setSaving(false); }
   };
 
   if (!loaded) return <AppShell hideNav><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
@@ -88,7 +79,7 @@ function EditTxn() {
         back={<Link to="/customers/$id" params={{ id }} className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
 
-      <form onSubmit={tryConfirm} className="space-y-5 px-4 pb-8 pt-6">
+      <form onSubmit={onSave} className="space-y-5 px-4 pb-8 pt-6">
         <Tabs value={type} onValueChange={v => setType(v as TxnType)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="debit">You gave</TabsTrigger>
@@ -116,7 +107,7 @@ function EditTxn() {
         </Field>
         <Field label="Payment method">
           <Select value={method} onValueChange={v => setMethod(v as PaymentMethod)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
             <SelectContent>
               {methods.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
             </SelectContent>
@@ -128,23 +119,10 @@ function EditTxn() {
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">
           <Button type="submit" disabled={saving} className="h-12 w-full text-base font-semibold">
-            Save changes
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </form>
-
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Save changes?</AlertDialogTitle>
-            <AlertDialogDescription>This will update the transaction and recalculate the party balance.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doSave} disabled={saving}>{saving ? "Saving…" : "Save"}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AppShell>
   );
 }

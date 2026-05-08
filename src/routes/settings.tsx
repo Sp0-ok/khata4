@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2,
-  Coins, Search, FileSpreadsheet, Hash, Image as ImageIcon, X,
+  Coins, Search, Hash, Image as ImageIcon, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { db, getSettings, updateSettings, ALL_CURRENCIES, calcInvoiceTotals } from "@/lib/db";
+import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
+import { downscaleImage } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {

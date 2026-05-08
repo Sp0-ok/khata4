@@ -138,7 +138,7 @@ function Reports() {
 
           <section className="px-4 pt-4">
             <Card className="rounded-2xl p-4">
-              <h3 className="text-sm font-semibold">Last 6 months · Parties</h3>
+              <h3 className="text-sm font-semibold">{periodLabel} · Parties</h3>
               <div className="mt-3 h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartKind === "bars" ? (
@@ -207,7 +207,7 @@ function Reports() {
 
           <section className="px-4 pt-4">
             <Card className="rounded-2xl p-4">
-              <h3 className="text-sm font-semibold">Last 6 months · Business</h3>
+              <h3 className="text-sm font-semibold">{periodLabel} · Business</h3>
               <div className="mt-3 h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartKind === "bars" ? (

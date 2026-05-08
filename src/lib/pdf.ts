@@ -82,12 +82,22 @@ export async function generateInvoicePDF(inv: Invoice) {
   // Header band
   doc.setFillColor(...TEAL);
   doc.rect(0, 0, w, 32, "F");
+
+  let textX = 14;
+  if (s.logo) {
+    try {
+      const fmt = s.logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
+      doc.addImage(s.logo, fmt, 14, 6, 20, 20);
+      textX = 38;
+    } catch { /* ignore bad logo */ }
+  }
+
   doc.setTextColor(255);
   doc.setFontSize(18); doc.setFont("helvetica", "bold");
-  doc.text(s.businessName, 14, 14);
+  doc.text(s.businessName, textX, 14);
   doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  if (s.phone) doc.text(s.phone, 14, 21);
-  if (s.address) doc.text(s.address, 14, 27);
+  if (s.phone) doc.text(s.phone, textX, 21);
+  if (s.address) doc.text(s.address, textX, 27);
 
   doc.setFontSize(22); doc.setFont("helvetica", "bold");
   doc.text("INVOICE", w - 14, 16, { align: "right" });

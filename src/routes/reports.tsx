@@ -92,6 +92,8 @@ function Reports() {
     borderRadius: 12, fontSize: 12, color: "var(--foreground)",
   };
   const fmt = (v: number) => `${symbol} ${v.toLocaleString()}`;
+  const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+  const tickFmt = (v: number) => compact.format(v);
 
   const periodLabel = period === "all" ? "All time" : `Last ${PERIOD_LABEL[period]}`;
 

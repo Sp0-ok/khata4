@@ -90,63 +90,6 @@ function SettingsPage() {
     }
   };
 
-  const onExportCSV = async (kind: "transactions" | "invoices" | "expenses" | "parties") => {
-    try {
-      let rows: any[] = [];
-      if (kind === "transactions") {
-        const [parties, txns] = await Promise.all([db.parties.toArray(), db.transactions.toArray()]);
-        const pmap = new Map(parties.map(p => [p.id, p.name]));
-        rows = txns.map(t => ({
-          date: new Date(t.date).toISOString().slice(0, 10),
-          party: pmap.get(t.partyId) || "",
-          type: t.type,
-          amount: t.amount,
-          method: t.method,
-          note: t.note || "",
-        }));
-      } else if (kind === "invoices") {
-        const invs = await db.invoices.toArray();
-        rows = invs.map(i => {
-          const t = calcInvoiceTotals(i);
-          return {
-            number: i.number,
-            date: new Date(i.date).toISOString().slice(0, 10),
-            customer: i.partyName,
-            items: i.items.length,
-            subtotal: t.subtotal,
-            discount: i.discount,
-            tax: t.tax,
-            total: t.total,
-            paid: i.paidAmount,
-            due: Math.max(0, t.total - i.paidAmount),
-            status: i.status,
-          };
-        });
-      } else if (kind === "expenses") {
-        const exps = await db.expenses.toArray();
-        rows = exps.map(e => ({
-          date: new Date(e.date).toISOString().slice(0, 10),
-          title: e.title,
-          category: e.category,
-          vendor: e.vendor || "",
-          method: e.method,
-          amount: e.amount,
-          notes: e.notes || "",
-        }));
-      } else {
-        const parties = await db.parties.toArray();
-        rows = parties.map(p => ({
-          name: p.name, type: p.type, phone: p.phone || "",
-          email: p.email || "", address: p.address || "", openingBalance: p.openingBalance,
-        }));
-      }
-      if (!rows.length) return toast.info("Nothing to export");
-      downloadFile(`${kind}-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv", toCSV(rows));
-      toast.success(`${rows.length} rows exported`);
-    } catch (e: any) {
-      toast.error(e.message || "Export failed");
-    }
-  };
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;

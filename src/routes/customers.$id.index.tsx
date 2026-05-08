@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { db, getPartyBalance, getSettings, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { downloadStatement, shareWhatsApp } from "@/lib/pdf";
+import { saveFile } from "@/lib/native-download";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -135,11 +136,7 @@ function CustomerDetail() {
       ].map(csvLine).join(",")),
     ).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${party!.name.replace(/\s+/g, "_")}_transactions.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    await saveFile(`${party!.name.replace(/\s+/g, "_")}_transactions.csv`, blob, "text/csv");
     toast.success(`Exported ${list.length} transactions`);
   };
 

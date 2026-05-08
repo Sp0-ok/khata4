@@ -94,7 +94,7 @@ function NewExpense() {
         </Field>
         <Field label="Payment method">
           <Select value={method} onValueChange={v => setMethod(v as PaymentMethod)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
             <SelectContent>
               {methods.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
             </SelectContent>

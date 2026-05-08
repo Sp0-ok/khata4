@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "BahiBook — Dashboard" },
+      { title: "Hisaab Kitaab — Dashboard" },
       { name: "description", content: "Your business at a glance: receivables, payables and recent transactions." },
     ],
   }),
@@ -28,10 +28,10 @@ function Dashboard() {
     db.transactions.orderBy("createdAt").reverse().limit(6).toArray(), []);
   const parties = useLiveQuery(() => db.parties.toArray(), []);
 
-  // Onboarding redirect
+  // Onboarding redirect — only after settings have actually loaded.
   useEffect(() => {
-    getSettings().then(s => { if (!s.onboarded) navigate({ to: "/onboarding" }); });
-  }, [navigate]);
+    if (settings && !settings.onboarded) navigate({ to: "/onboarding" });
+  }, [settings, navigate]);
 
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
@@ -39,9 +39,18 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <header className="px-5 pt-7 pb-3">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Hello,</p>
-        <h1 className="text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
+      <header className="flex items-start justify-between px-5 pt-7 pb-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
+          <h1 className="truncate text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
+        </div>
+        <Link
+          to="/settings"
+          aria-label="Settings"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
+        >
+          <SettingsIcon className="h-5 w-5" />
+        </Link>
       </header>
 
       <section className="px-4">

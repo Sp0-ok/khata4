@@ -172,7 +172,7 @@ function SettingsPage() {
       // Map old party IDs → newly inserted IDs so dependent records still link correctly.
       const idMap = new Map<number, number>();
 
-      await db.transaction("rw", db.parties, db.transactions, db.invoices, db.expenses, db.settings, async () => {
+      await db.transaction("rw", [db.parties, db.transactions, db.invoices, db.expenses, db.settings], async () => {
         await db.parties.clear();
         await db.transactions.clear();
         await db.invoices.clear();

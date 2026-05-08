@@ -97,7 +97,7 @@ function Reports() {
 
   return (
     <AppShell>
-      <PageHeader title="Reports" subtitle={view === "parties" ? "Customers & suppliers" : "Invoices & expenses"} />
+      <PageHeader title="Reports" subtitle={view === "parties" ? "Receivables & payables" : "Invoices & expenses"} />
 
       <div className="space-y-3 px-4 pt-4">
         <Tabs value={view} onValueChange={v => setView(v as any)}>

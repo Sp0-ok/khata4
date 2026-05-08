@@ -6,28 +6,24 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateSettings } from "@/lib/db";
+import { updateSettings, ONBOARDING_CURRENCIES } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Welcome — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Welcome — Hisaab Kitaab" }] }),
   component: Onboarding,
 });
 
 const slides = [
-  { icon: BookOpen, title: "Your digital bahi-khata", body: "Track customers, suppliers, and balances in seconds. Replace paper ledgers forever." },
+  { icon: BookOpen, title: "Your Digital Khata", body: "Track customers, suppliers, and balances in seconds. Replace paper ledgers forever." },
   { icon: Wallet, title: "Know who owes what", body: "Crystal-clear receivables and payables. Never lose track of a payment again." },
   { icon: ShieldCheck, title: "100% private & offline", body: "Your data lives on your device. No ads, no subscriptions, no cloud lock-in." },
-];
-
-const currencies = [
-  { c: "PKR", s: "Rs" }, { c: "INR", s: "₹" }, { c: "BDT", s: "৳" }, { c: "USD", s: "$" },
 ];
 
 function Onboarding() {
   const [step, setStep] = useState(0);
   const [biz, setBiz] = useState("");
-  const [cur, setCur] = useState(currencies[0]);
+  const [cur, setCur] = useState(ONBOARDING_CURRENCIES[0]);
   const navigate = useNavigate();
 
   const finish = async () => {
@@ -64,7 +60,8 @@ function Onboarding() {
                   {(() => { const I = slides[step].icon; return <I className="h-11 w-11" />; })()}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">{slides[step].title}</h1>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
+                  <h1 className="mt-1 text-2xl font-bold">{slides[step].title}</h1>
                   <p className="mt-2 text-sm text-muted-foreground">{slides[step].body}</p>
                 </div>
               </motion.div>
@@ -77,7 +74,7 @@ function Onboarding() {
                 <div className="space-y-1 text-center">
                   <Sparkles className="mx-auto h-8 w-8 text-primary" />
                   <h1 className="text-2xl font-bold">Set up your business</h1>
-                  <p className="text-sm text-muted-foreground">You can change these later in Settings.</p>
+                  <p className="text-sm text-muted-foreground">More currencies available later in Settings.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Business name</Label>
@@ -85,16 +82,16 @@ function Onboarding() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Currency</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {currencies.map(c => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {ONBOARDING_CURRENCIES.map(c => (
                       <button
                         key={c.c} type="button" onClick={() => setCur(c)}
                         className={cn(
-                          "rounded-xl border px-3 py-2 text-sm font-medium",
-                          cur.c === c.c ? "border-primary bg-primary/10 text-primary" : "border-border"
+                          "rounded-xl border px-3 py-3 text-left text-sm font-medium transition-colors",
+                          cur.c === c.c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
                         )}
                       >
-                        <span className="block text-xs text-muted-foreground">{c.s}</span>
+                        <span className="block text-xs text-muted-foreground">{c.s} · {c.name}</span>
                         {c.c}
                       </button>
                     ))}

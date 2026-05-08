@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
-import { Download, Moon, Sun, Trash2, Upload, Monitor, Building2, Coins } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2, Coins, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { db, getSettings, updateSettings } from "@/lib/db";
+import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -18,36 +18,48 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Settings — Hisaab Kitaab" }] }),
   component: SettingsPage,
 });
-
-const currencies = [
-  { c: "PKR", s: "Rs" }, { c: "INR", s: "₹" }, { c: "BDT", s: "৳" },
-  { c: "USD", s: "$" }, { c: "AED", s: "د.إ" }, { c: "SAR", s: "﷼" },
-];
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), []);
   const { theme, setTheme } = useTheme();
   const [busy, setBusy] = useState(false);
+  const [curQ, setCurQ] = useState("");
+
+  const filteredCurrencies = useMemo(() => {
+    const q = curQ.trim().toLowerCase();
+    if (!q) return ALL_CURRENCIES;
+    return ALL_CURRENCIES.filter(c =>
+      c.c.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q) ||
+      c.s.toLowerCase().includes(q)
+    );
+  }, [curQ]);
 
   if (!settings) return <AppShell><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
 
   const onExport = async () => {
-    const data = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      settings: await db.settings.toArray(),
-      parties: await db.parties.toArray(),
-      transactions: await db.transactions.toArray(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `bahibook-backup-${Date.now()}.json`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup downloaded");
+    try {
+      const data = {
+        version: 1,
+        app: "Hisaab Kitaab",
+        exportedAt: new Date().toISOString(),
+        settings: await db.settings.toArray(),
+        parties: await db.parties.toArray(),
+        transactions: await db.transactions.toArray(),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `hisaab-kitaab-backup-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Backup downloaded");
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    }
   };
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,14 +68,15 @@ function SettingsPage() {
     try {
       const text = await f.text();
       const data = JSON.parse(text);
-      if (!Array.isArray(data.parties) || !Array.isArray(data.transactions)) throw new Error("Invalid file");
+      if (!Array.isArray(data.parties) || !Array.isArray(data.transactions)) throw new Error("Invalid backup file");
       await db.transaction("rw", db.parties, db.transactions, async () => {
         await db.parties.clear();
         await db.transactions.clear();
-        await db.parties.bulkAdd(data.parties);
-        await db.transactions.bulkAdd(data.transactions);
+        // strip ids to avoid collisions
+        await db.parties.bulkAdd(data.parties.map((p: any) => { const { id, ...r } = p; return r; }));
+        await db.transactions.bulkAdd(data.transactions.map((t: any) => { const { id, ...r } = t; return r; }));
       });
-      toast.success("Backup restored");
+      toast.success(`Restored ${data.parties.length} parties, ${data.transactions.length} transactions`);
     } catch (err: any) {
       toast.error(err.message || "Invalid backup file");
     } finally {
@@ -82,7 +95,10 @@ function SettingsPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Settings" />
+      <PageHeader
+        title="Settings"
+        back={<Link to="/" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
+      />
 
       <div className="space-y-4 px-4 pt-4">
         <Card className="space-y-3 rounded-2xl p-4">
@@ -108,21 +124,33 @@ function SettingsPage() {
         </Card>
 
         <Card className="space-y-3 rounded-2xl p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold"><Coins className="h-4 w-4 text-primary" /> Currency</div>
-          <div className="grid grid-cols-3 gap-2">
-            {currencies.map(({ c, s }) => (
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Coins className="h-4 w-4 text-primary" /> Currency
+            <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              {settings.currency}
+            </span>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={curQ} onChange={e => setCurQ(e.target.value)} placeholder="Search currencies" className="h-10 rounded-xl pl-9" />
+          </div>
+          <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
+            {filteredCurrencies.map(({ c, s, name }) => (
               <button
                 key={c}
                 onClick={() => updateSettings({ currency: c, currencySymbol: s })}
                 className={cn(
-                  "rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+                  "rounded-xl border px-3 py-2 text-left text-sm font-medium transition-colors",
                   settings.currency === c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
                 )}
               >
-                <span className="block text-xs text-muted-foreground">{s}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{s} · {name}</span>
                 {c}
               </button>
             ))}
+            {filteredCurrencies.length === 0 && (
+              <p className="col-span-2 py-3 text-center text-xs text-muted-foreground">No matches</p>
+            )}
           </div>
         </Card>
 
@@ -150,15 +178,18 @@ function SettingsPage() {
         </Card>
 
         <Card className="space-y-3 rounded-2xl p-4">
-          <div className="text-sm font-semibold">Backup & data</div>
+          <div className="text-sm font-semibold">Backup &amp; data</div>
           <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={onExport}>
             <Download className="mr-2 h-4 w-4" /> Export backup (JSON)
           </Button>
           <label className="block">
-            <Button variant="outline" asChild className="h-11 w-full justify-start rounded-xl pointer-events-none">
-              <span><Upload className="mr-2 h-4 w-4" /> {busy ? "Importing…" : "Import backup"}</span>
-            </Button>
-            <input type="file" accept="application/json" hidden onChange={onImport} />
+            <span className={cn(
+              "flex h-11 w-full cursor-pointer items-center rounded-xl border border-input bg-background px-4 text-sm font-medium hover:bg-accent",
+              busy && "pointer-events-none opacity-50"
+            )}>
+              <Upload className="mr-2 h-4 w-4" /> {busy ? "Importing…" : "Import backup"}
+            </span>
+            <input type="file" accept="application/json,.json" hidden onChange={onImport} disabled={busy} />
           </label>
 
           <AlertDialog>
@@ -183,7 +214,7 @@ function SettingsPage() {
         </Card>
 
         <p className="pb-4 text-center text-[11px] text-muted-foreground">
-          BahiBook · 100% offline · No ads · No tracking
+          Hisaab Kitaab · Digital Khata · 100% offline · No ads · No tracking
         </p>
       </div>
     </AppShell>

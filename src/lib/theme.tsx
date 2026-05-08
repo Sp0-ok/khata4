@@ -1,6 +1,6 @@
 import { useEffect, useState, createContext, useContext, type ReactNode } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { getSettings, updateSettings } from "./db";
+import { db, ensureSettings, updateSettings } from "./db";
 
 type Theme = "light" | "dark" | "system";
 const ThemeCtx = createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({
@@ -9,8 +9,15 @@ const ThemeCtx = createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const settings = useLiveQuery(() => getSettings(), []);
+  // Read-only liveQuery — safe.
+  const settings = useLiveQuery(() => db.settings.toArray().then(r => r[0]), []);
   const [theme, setThemeState] = useState<Theme>("system");
+  const [bootstrapped, setBootstrapped] = useState(false);
+
+  // One-time write at boot (outside liveQuery context).
+  useEffect(() => {
+    ensureSettings().then(() => setBootstrapped(true));
+  }, []);
 
   useEffect(() => {
     if (settings?.theme) setThemeState(settings.theme);
@@ -34,10 +41,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
-    updateSettings({ theme: t });
+    void updateSettings({ theme: t });
   };
 
-  return <ThemeCtx.Provider value={{ theme, setTheme }}>{children}</ThemeCtx.Provider>;
+  return <ThemeCtx.Provider value={{ theme, setTheme }}>{bootstrapped ? children : null}</ThemeCtx.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeCtx);

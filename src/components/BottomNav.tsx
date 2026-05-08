@@ -1,12 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Users, BarChart3, Settings as SettingsIcon } from "lucide-react";
+import { Home, Users, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items: { to: string; label: string; icon: typeof Home; exact?: boolean }[] = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/customers", label: "Parties", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function BottomNav() {

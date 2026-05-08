@@ -1,8 +1,9 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, formatMoney, getSettings } from "@/lib/db";
+import { db, formatMoney, DEFAULT_SETTINGS } from "@/lib/db";
 
 export function useCurrency() {
-  const settings = useLiveQuery(() => getSettings(), []);
+  // Read-only liveQuery — never triggers a write.
+  const settings = useLiveQuery(() => db.settings.toArray().then(r => r[0] ?? DEFAULT_SETTINGS), []);
   const symbol = settings?.currencySymbol || "Rs";
   return {
     symbol,

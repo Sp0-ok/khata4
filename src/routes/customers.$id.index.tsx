@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/customers/$id/")({
-  head: () => ({ meta: [{ title: "Khata — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Khata — Hisaab Kitaab" }] }),
   component: CustomerDetail,
 });
 
@@ -35,8 +35,10 @@ function CustomerDetail() {
   const { format, symbol } = useCurrency();
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
+  // Newest first — sort by createdAt descending so freshly added entries appear on top.
   const txns = useLiveQuery(
-    () => db.transactions.where("partyId").equals(pid).reverse().sortBy("date").then(a => a.reverse()),
+    () => db.transactions.where("partyId").equals(pid).toArray()
+      .then(arr => arr.sort((a, b) => b.createdAt - a.createdAt)),
     [pid]
   );
   const balance = useLiveQuery(() => getPartyBalance(pid), [pid, txns?.length]) || 0;
@@ -46,9 +48,9 @@ function CustomerDetail() {
 
   const onShareReminder = () => {
     const msg = balance > 0
-      ? `Assalam-o-Alaikum ${party.name}, your pending balance is ${format(balance)}. Kindly clear at your convenience. — Sent via BahiBook.`
+      ? `Assalam-o-Alaikum ${party.name}, your pending balance is ${format(balance)}. Kindly clear at your convenience. — Sent via Hisaab Kitaab.`
       : balance < 0
-      ? `Assalam-o-Alaikum ${party.name}, our pending balance with you is ${format(balance)}. Will settle soon. — BahiBook`
+      ? `Assalam-o-Alaikum ${party.name}, our pending balance with you is ${format(balance)}. Will settle soon. — Hisaab Kitaab`
       : `Assalam-o-Alaikum ${party.name}, your account is fully settled. Thank you!`;
     shareWhatsApp(party.phone, msg);
   };

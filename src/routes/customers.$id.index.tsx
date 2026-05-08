@@ -119,6 +119,30 @@ function CustomerDetail() {
     }
   };
 
+  const onExportTxns = async () => {
+    const list = (await db.transactions.where("partyId").equals(pid).toArray())
+      .sort((a, b) => a.date - b.date);
+    if (!list.length) return toast.info("No transactions to export");
+    const headers = ["date", "type", "amount", "method", "note"];
+    const csvLine = (v: any) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers.join(",")].concat(
+      list.map(t => [
+        new Date(t.date).toISOString().slice(0, 10),
+        t.type, t.amount, t.method, t.note || "",
+      ].map(csvLine).join(",")),
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${party!.name.replace(/\s+/g, "_")}_transactions.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${list.length} transactions`);
+  };
+
   return (
     <AppShell hideNav>
       <PageHeader

@@ -3,65 +3,151 @@ import autoTable from "jspdf-autotable";
 import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
 
 const TEAL: [number, number, number] = [13, 148, 136];
+const RED: [number, number, number] = [220, 38, 38];
+const GREEN: [number, number, number] = [22, 163, 74];
+const SLATE: [number, number, number] = [71, 85, 105];
+const MUTED: [number, number, number] = [120, 120, 120];
+const RED_TINT: [number, number, number] = [254, 226, 226];
+const GREEN_TINT: [number, number, number] = [220, 252, 231];
 
 export async function generateStatementPDF(party: Party, businessName: string, currencySymbol: string) {
-  const txns = await db.transactions.where("partyId").equals(party.id!).sortBy("date");
+  const txns = (await db.transactions.where("partyId").equals(party.id!).toArray())
+    .sort((a, b) => a.date - b.date);
 
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
 
+  // ----- Header band -----
   doc.setFillColor(...TEAL);
-  doc.rect(0, 0, w, 28, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16); doc.setFont("helvetica", "bold");
-  doc.text(businessName, 14, 13);
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.text("Account Statement", 14, 21);
+  doc.rect(0, 0, w, 10, "F");
+  doc.setTextColor(255);
+  doc.setFontSize(8); doc.setFont("helvetica", "normal");
+  doc.text(businessName, 14, 6.5);
+  doc.text("STATEMENT", w - 14, 6.5, { align: "right" });
 
-  doc.setTextColor(30);
-  doc.setFontSize(12); doc.setFont("helvetica", "bold");
-  doc.text(party.name, 14, 40);
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  if (party.phone) doc.text(`Phone: ${party.phone}`, 14, 46);
-  doc.text(`Type: ${party.type}`, 14, 52);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, w - 14, 46, { align: "right" });
+  // ----- Centered title -----
+  doc.setTextColor(20);
+  doc.setFontSize(20); doc.setFont("helvetica", "bold");
+  doc.text(`${party.name} Statement`, w / 2, 24, { align: "center" });
 
-  let running = party.openingBalance || 0;
-  const rows = [
-    ["Opening", "—", "—", "—", formatMoney(running, currencySymbol)],
-    ...txns.map(t => {
-      running += t.type === "debit" ? t.amount : -t.amount;
-      return [
-        new Date(t.date).toLocaleDateString(),
-        t.note || (t.type === "credit" ? "Received" : "Given"),
-        t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "—",
-        t.type === "credit" ? formatMoney(t.amount, currencySymbol) : "—",
-        formatMoney(running, currencySymbol),
-      ];
-    }),
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...MUTED);
+  if (party.phone) doc.text(`Phone Number: ${party.phone}`, w / 2, 30, { align: "center" });
+
+  const opening = party.openingBalance || 0;
+  const firstDate = txns[0]?.date ?? Date.now();
+  const lastDate = txns[txns.length - 1]?.date ?? Date.now();
+  const fmtDate = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+  doc.text(`(${fmtDate(firstDate)} - ${fmtDate(lastDate)})`, w / 2, 35, { align: "center" });
+
+  // ----- Summary cards -----
+  let totalDebit = 0, totalCredit = 0;
+  txns.forEach(t => { if (t.type === "debit") totalDebit += t.amount; else totalCredit += t.amount; });
+  const net = opening + totalDebit - totalCredit;
+  const partyVerb = net > 0 ? `${party.name} will give` : net < 0 ? `${party.name} will get` : "Settled";
+
+  const cardY = 41, cardH = 26;
+  const margin = 14, gap = 4;
+  const cardW = (w - margin * 2 - gap * 4) / 5;
+
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, cardY, w - margin * 2, cardH, 2, 2, "S");
+
+  const cards: { label: string; value: string; color: [number, number, number]; sub: string }[] = [
+    { label: "Opening Balance", value: formatMoney(Math.abs(opening), currencySymbol), color: opening === 0 ? SLATE : opening > 0 ? RED : GREEN, sub: opening === 0 ? "(settled)" : `(on ${fmtDate(firstDate)})` },
+    { label: "Total Debit (-)", value: formatMoney(totalDebit, currencySymbol), color: RED, sub: " " },
+    { label: "Total Credit (+)", value: formatMoney(totalCredit, currencySymbol), color: GREEN, sub: " " },
+    { label: "Net Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
+    { label: "Running Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: `(on ${fmtDate(lastDate)})` },
   ];
 
-  autoTable(doc, {
-    startY: 60,
-    head: [["Date", "Note", "Given", "Received", "Balance"]],
-    body: rows,
-    headStyles: { fillColor: TEAL, textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    alternateRowStyles: { fillColor: [245, 250, 248] },
-    margin: { left: 14, right: 14 },
+  cards.forEach((c, i) => {
+    const x = margin + i * (cardW + gap) + (i > 0 ? 0 : 0);
+    if (i > 0) {
+      doc.setDrawColor(230);
+      doc.line(x - gap / 2, cardY + 4, x - gap / 2, cardY + cardH - 4);
+    }
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...MUTED);
+    doc.text(c.label, x + 2, cardY + 6);
+    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...c.color);
+    doc.text(c.value, x + 2, cardY + 14);
+    doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...MUTED);
+    const subLines = doc.splitTextToSize(c.sub, cardW - 2);
+    doc.text(subLines, x + 2, cardY + 19);
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  const label = running > 0 ? "Net: To receive" : running < 0 ? "Net: To pay" : "Settled";
-  doc.text(`${label}  —  ${formatMoney(running, currencySymbol)}`, 14, finalY);
+  // ----- Entries count -----
+  let y = cardY + cardH + 8;
+  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(20);
+  doc.text(`No. of Entries: ${txns.length} (All)`, margin, y);
 
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.setTextColor(140);
-  doc.text("Generated by Hisaab Kitaab — offline Digital Khata for small business", 14, 287);
+  // ----- Table -----
+  let running = opening;
+  const body: any[] = [];
+  // Opening row
+  body.push([
+    { content: fmtDate(firstDate), styles: { fontStyle: "bold" } },
+    "", "",
+    { content: `(Opening Balance: ${formatMoney(opening, currencySymbol)})`, styles: { textColor: MUTED, halign: "right" } },
+    "",
+  ]);
+
+  txns.forEach((t, idx) => {
+    running += t.type === "debit" ? t.amount : -t.amount;
+    const balanceTxt = running === 0
+      ? formatMoney(0, currencySymbol)
+      : running > 0
+        ? `${formatMoney(Math.abs(running), currencySymbol)} dr`
+        : `${formatMoney(Math.abs(running), currencySymbol)} cr`;
+    body.push([
+      String(idx + 1),
+      fmtDate(t.date),
+      t.note || (t.type === "credit" ? "Received" : "Given"),
+      {
+        content: t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "",
+        styles: { fillColor: t.type === "debit" ? RED_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
+      },
+      {
+        content: t.type === "credit" ? formatMoney(t.amount, currencySymbol) : "",
+        styles: { fillColor: t.type === "credit" ? GREEN_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
+      },
+      {
+        content: balanceTxt,
+        styles: { textColor: running > 0 ? RED : running < 0 ? GREEN : SLATE, halign: "right", fontStyle: "bold" },
+      },
+    ]);
+  });
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [["#", "Date", "Details", "Debit (-)", "Credit (+)", "Balance"]],
+    body,
+    headStyles: { fillColor: [241, 245, 249], textColor: 60, fontSize: 9, fontStyle: "bold", lineColor: [220, 220, 220], lineWidth: 0.2 },
+    bodyStyles: { fontSize: 9, lineColor: [230, 230, 230], lineWidth: 0.2, cellPadding: 3 },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: 22 },
+      2: { cellWidth: "auto" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+    },
+    margin: { left: margin, right: margin },
+    theme: "grid",
+    foot: [[
+      { content: "Grand Total", colSpan: 3, styles: { halign: "left", fontStyle: "bold", fillColor: [241, 245, 249], textColor: 20 } },
+      { content: formatMoney(totalDebit, currencySymbol), styles: { halign: "right", fontStyle: "bold", fillColor: [241, 245, 249], textColor: 20 } },
+      { content: formatMoney(totalCredit, currencySymbol), styles: { halign: "right", fontStyle: "bold", fillColor: [241, 245, 249], textColor: 20 } },
+      { content: net === 0 ? formatMoney(0, currencySymbol) : `${formatMoney(Math.abs(net), currencySymbol)} ${net > 0 ? "dr" : "cr"}`, styles: { halign: "right", fontStyle: "bold", fillColor: [241, 245, 249], textColor: 20 } },
+    ]],
+  });
+
+  // ----- Footer -----
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...MUTED);
+  const stamp = new Date();
+  doc.text(`Report Generated: ${stamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} | ${fmtDate(stamp.getTime())}`, margin, pageH - 8);
+  doc.text("Hisaab Kitaab", w - margin, pageH - 8, { align: "right" });
 
   return doc;
 }

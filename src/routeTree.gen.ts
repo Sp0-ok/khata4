@@ -9,10 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomersIndexRouteImport } from './routes/customers.index'
 import { Route as CustomersNewRouteImport } from './routes/customers.new'
+import { Route as CustomersIdIndexRouteImport } from './routes/customers.$id.index'
+import { Route as CustomersIdAddRouteImport } from './routes/customers.$id.add'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -28,39 +48,115 @@ const CustomersNewRoute = CustomersNewRouteImport.update({
   path: '/customers/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomersIdIndexRoute = CustomersIdIndexRouteImport.update({
+  id: '/customers/$id/',
+  path: '/customers/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersIdAddRoute = CustomersIdAddRouteImport.update({
+  id: '/customers/$id/add',
+  path: '/customers/$id/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/customers/new': typeof CustomersNewRoute
   '/customers/': typeof CustomersIndexRoute
+  '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id/': typeof CustomersIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/customers/new': typeof CustomersNewRoute
   '/customers': typeof CustomersIndexRoute
+  '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id': typeof CustomersIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/customers/new': typeof CustomersNewRoute
   '/customers/': typeof CustomersIndexRoute
+  '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id/': typeof CustomersIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/customers/new' | '/customers/'
+  fullPaths:
+    | '/'
+    | '/onboarding'
+    | '/reports'
+    | '/settings'
+    | '/customers/new'
+    | '/customers/'
+    | '/customers/$id/add'
+    | '/customers/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/customers/new' | '/customers'
-  id: '__root__' | '/' | '/customers/new' | '/customers/'
+  to:
+    | '/'
+    | '/onboarding'
+    | '/reports'
+    | '/settings'
+    | '/customers/new'
+    | '/customers'
+    | '/customers/$id/add'
+    | '/customers/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/onboarding'
+    | '/reports'
+    | '/settings'
+    | '/customers/new'
+    | '/customers/'
+    | '/customers/$id/add'
+    | '/customers/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  OnboardingRoute: typeof OnboardingRoute
+  ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
   CustomersNewRoute: typeof CustomersNewRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
+  CustomersIdAddRoute: typeof CustomersIdAddRoute
+  CustomersIdIndexRoute: typeof CustomersIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,13 +178,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customers/$id/': {
+      id: '/customers/$id/'
+      path: '/customers/$id'
+      fullPath: '/customers/$id/'
+      preLoaderRoute: typeof CustomersIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers/$id/add': {
+      id: '/customers/$id/add'
+      path: '/customers/$id/add'
+      fullPath: '/customers/$id/add'
+      preLoaderRoute: typeof CustomersIdAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  OnboardingRoute: OnboardingRoute,
+  ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
   CustomersNewRoute: CustomersNewRoute,
   CustomersIndexRoute: CustomersIndexRoute,
+  CustomersIdAddRoute: CustomersIdAddRoute,
+  CustomersIdIndexRoute: CustomersIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

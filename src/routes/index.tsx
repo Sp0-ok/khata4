@@ -1,7 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, FileText, Receipt, Settings as SettingsIcon, TrendingUp, Wallet } from "lucide-react";
+import {
+  ArrowDownLeft, ArrowUpRight, FileText, Plus, Receipt,
+  Settings as SettingsIcon, TrendingUp, Wallet,
+} from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -14,7 +17,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Hisaab Kitaab — Dashboard" },
-      { name: "description", content: "Your business at a glance: receivables, payables and recent transactions." },
+      { name: "description", content: "Your business at a glance: receivables, payables, sales and expenses." },
     ],
   }),
   component: Dashboard,
@@ -24,18 +27,32 @@ function Dashboard() {
   const { format, settings } = useCurrency();
   const navigate = useNavigate();
   const balances = useLiveQuery(() => getAllBalances(), []);
-  const recent = useLiveQuery(() =>
-    db.transactions.orderBy("createdAt").reverse().limit(6).toArray(), []);
+  const recent = useLiveQuery(
+    () => db.transactions.orderBy("createdAt").reverse().limit(6).toArray(), [],
+  );
   const parties = useLiveQuery(() => db.parties.toArray(), []);
+  const invoices = useLiveQuery(() => db.invoices.toArray(), []);
+  const expenses = useLiveQuery(() => db.expenses.toArray(), []);
 
-  // Onboarding redirect — only after settings have actually loaded.
   useEffect(() => {
     if (settings && !settings.onboarded) navigate({ to: "/onboarding" });
   }, [settings, navigate]);
 
+  const monthStart = useMemo(() => {
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime();
+  }, []);
+
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
   const net = receivable - payable;
+
+  const monthSales = (invoices || [])
+    .filter(i => i.date >= monthStart)
+    .reduce((s, i) => s + calcInvoiceTotals(i).total, 0);
+  const monthExpenses = (expenses || [])
+    .filter(e => e.date >= monthStart).reduce((s, e) => s + e.amount, 0);
+  const monthProfit = monthSales - monthExpenses;
+  const unpaidInvoices = (invoices || []).filter(i => i.status !== "paid").length;
 
   return (
     <AppShell>
@@ -71,9 +88,21 @@ function Dashboard() {
         </motion.div>
       </section>
 
+      <section className="grid grid-cols-3 gap-2 px-4 pt-4">
+        <MiniStat label="Sales (mo)" value={format(monthSales)} tone="credit" />
+        <MiniStat label="Expense (mo)" value={format(monthExpenses)} tone="debit" />
+        <MiniStat label="Profit (mo)" value={format(monthProfit)} tone={monthProfit >= 0 ? "credit" : "debit"} />
+      </section>
+
       <section className="grid grid-cols-2 gap-3 px-4 pt-4">
-        <QuickAction to="/customers/new?type=customer&kind=credit" tone="credit" label="You'll Get" sub="Customer paid less" />
-        <QuickAction to="/customers/new?type=supplier&kind=debit" tone="debit" label="You'll Give" sub="You owe supplier" />
+        <QuickAction to="/invoices/new" icon={<FileText className="h-5 w-5" />} label="New Invoice"
+          sub={unpaidInvoices ? `${unpaidInvoices} unpaid` : "Bill a customer"} />
+        <QuickAction to="/expenses/new" icon={<Receipt className="h-5 w-5" />} label="Add Expense"
+          sub="Log a spend" tone="debit" />
+        <QuickAction to="/customers/new?type=customer" icon={<Plus className="h-5 w-5" />} label="You'll Get"
+          sub="Add receipt" tone="credit" />
+        <QuickAction to="/customers/new?type=supplier" icon={<Plus className="h-5 w-5" />} label="You'll Give"
+          sub="Add payment" tone="debit" />
       </section>
 
       <section className="px-4 pt-6">
@@ -119,14 +148,6 @@ function Dashboard() {
           })}
         </div>
       </section>
-
-      <Link
-        to="/customers"
-        className="fixed bottom-24 right-[max(1rem,calc(50%-13rem))] z-40 flex items-center gap-2 rounded-full px-5 py-3.5 font-semibold text-primary-foreground shadow-[var(--shadow-elevated)]"
-        style={{ background: "var(--gradient-primary)" }}
-      >
-        <Search className="h-4 w-4" /> Find party
-      </Link>
     </AppShell>
   );
 }
@@ -140,22 +161,34 @@ function Stat({ label, value, icon }: { label: string; value: string; icon: Reac
   );
 }
 
-function QuickAction({ to, tone, label, sub }: { to: string; tone: "credit" | "debit"; label: string; sub: string }) {
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: "credit" | "debit" }) {
+  return (
+    <Card className="rounded-2xl p-2.5">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn(
+        "truncate text-sm font-bold tabular",
+        tone === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]",
+      )}>{value}</p>
+    </Card>
+  );
+}
+
+function QuickAction({
+  to, icon, label, sub, tone = "credit",
+}: { to: string; icon: React.ReactNode; label: string; sub: string; tone?: "credit" | "debit" }) {
   return (
     <Link to={to as any}>
       <Card className={cn(
-        "flex items-center gap-3 rounded-2xl p-4 transition-transform active:scale-[0.98]",
-        tone === "credit" ? "border-[color:var(--credit)]/30" : "border-[color:var(--debit)]/30"
+        "flex items-center gap-3 rounded-2xl p-3 transition-transform active:scale-[0.98]",
+        tone === "credit" ? "border-[color:var(--credit)]/30" : "border-[color:var(--debit)]/30",
       )}>
         <div className={cn(
           "flex h-10 w-10 items-center justify-center rounded-full",
-          tone === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
-        )}>
-          {tone === "credit" ? <Plus className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-        </div>
-        <div>
-          <p className="text-sm font-semibold">{label}</p>
-          <p className="text-[11px] text-muted-foreground">{sub}</p>
+          tone === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]",
+        )}>{icon}</div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{label}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{sub}</p>
         </div>
       </Card>
     </Link>

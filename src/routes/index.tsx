@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, Plus, Search, Settings as SettingsIcon, TrendingUp, Wallet } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowDownLeft, ArrowUpRight, FileText, Receipt, Settings as SettingsIcon, TrendingUp, Wallet } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { db, getAllBalances } from "@/lib/db";
+import { db, getAllBalances, calcInvoiceTotals } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 

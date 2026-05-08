@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
+import { tapSuccess } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
@@ -52,6 +53,7 @@ function AddTxn() {
         createdAt: now,
       });
       await db.parties.update(Number(id), { updatedAt: now });
+      tapSuccess();
       toast.success(type === "credit" ? "Receipt recorded" : "Payment recorded");
       navigate({ to: "/customers/$id", params: { id } });
     } catch (err: any) {

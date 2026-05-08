@@ -43,6 +43,7 @@ function Dashboard() {
   const net = receivable - payable;
 
   const [eggOpen, setEggOpen] = useState(false);
+  const [eggReady, setEggReady] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const holdFired = useRef(false);
 
@@ -52,11 +53,16 @@ function Dashboard() {
       holdFired.current = true;
       haptic([20, 40, 80]);
       setEggOpen(true);
+      // Defer enabling the close-on-tap handler so the same pointer-up
+      // that just released the long-press doesn't immediately close it.
+      setEggReady(false);
+      window.setTimeout(() => setEggReady(true), 450);
     }, 5000);
   };
   const cancelHold = () => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
   };
+  const closeEgg = () => { if (eggReady) setEggOpen(false); };
 
   return (
     <AppShell>

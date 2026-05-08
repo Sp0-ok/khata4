@@ -15,7 +15,7 @@ export const Route = createFileRoute("/onboarding")({
 });
 
 const slides = [
-  { icon: BookOpen, title: "Your Digital Khata", body: "Track customers, suppliers, and balances in seconds. Replace paper ledgers forever." },
+  { icon: BookOpen, title: "Your Digital Khata", body: "Track parties, balances and payments in seconds. Replace paper ledgers forever." },
   { icon: Wallet, title: "Know who owes what", body: "Crystal-clear receivables and payables. Never lose track of a payment again." },
   { icon: ShieldCheck, title: "100% private & offline", body: "Your data lives on your device. No ads, no subscriptions, no cloud lock-in." },
 ];

@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -16,6 +16,7 @@ import { useCurrency } from "@/lib/hooks";
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
 export const Route = createFileRoute("/expenses/new")({
+  validateSearch: (s: Record<string, unknown>) => ({ id: s.id ? Number(s.id) : undefined }),
   head: () => ({ meta: [{ title: "Add expense — Hisaab Kitaab" }] }),
   component: NewExpense,
 });

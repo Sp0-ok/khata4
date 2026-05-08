@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
@@ -16,6 +16,9 @@ import { db, calcInvoiceTotals, getSettings, nextInvoiceNumber, type InvoiceItem
 import { useCurrency } from "@/lib/hooks";
 
 export const Route = createFileRoute("/invoices/new")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    id: s.id ? Number(s.id) : undefined,
+  }),
   head: () => ({ meta: [{ title: "New invoice — Hisaab Kitaab" }] }),
   component: NewInvoice,
 });

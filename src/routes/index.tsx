@@ -43,6 +43,7 @@ function Dashboard() {
   const net = receivable - payable;
 
   const [eggOpen, setEggOpen] = useState(false);
+  const [eggReady, setEggReady] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const holdFired = useRef(false);
 
@@ -52,11 +53,16 @@ function Dashboard() {
       holdFired.current = true;
       haptic([20, 40, 80]);
       setEggOpen(true);
+      // Defer enabling the close-on-tap handler so the same pointer-up
+      // that just released the long-press doesn't immediately close it.
+      setEggReady(false);
+      window.setTimeout(() => setEggReady(true), 450);
     }, 5000);
   };
   const cancelHold = () => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
   };
+  const closeEgg = () => { if (eggReady) setEggOpen(false); };
 
   return (
     <AppShell>
@@ -74,7 +80,10 @@ function Dashboard() {
           onTouchStart={startHold}
           onTouchEnd={cancelHold}
           onTouchCancel={cancelHold}
+          onTouchMove={cancelHold}
+          onContextMenu={(e) => e.preventDefault()}
           onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
+          style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", touchAction: "manipulation" }}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />
@@ -87,8 +96,8 @@ function Dashboard() {
             key="egg"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setEggOpen(false)}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70"
+            onClick={closeEgg}
           >
             <motion.div
               initial={{ scale: 0.6, y: 30, opacity: 0 }}

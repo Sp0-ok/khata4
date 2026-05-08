@@ -148,17 +148,13 @@ export async function generateStatementPDF(party: Party, businessName: string, c
       { content: formatMoney(Math.abs(net), currencySymbol), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
     ]],
     didDrawCell: (data) => {
-      // Draw a thick top border on the foot row to visually separate it.
+      // Draw a thick top border across the foot row to visually separate Grand Total.
       if (data.section === "foot" && data.row.index === 0 && data.column.index === 0) {
-        const { table } = data;
-        const x1 = data.cell.x;
-        const x2 = table.settings.margin.right
-          ? doc.internal.pageSize.getWidth() - table.settings.margin.right
-          : x1 + table.getWidth(doc.internal.pageSize.getWidth());
+        const pageW = doc.internal.pageSize.getWidth();
         const yy = data.cell.y;
         doc.setDrawColor(40);
         doc.setLineWidth(0.6);
-        doc.line(x1, yy, x2, yy);
+        doc.line(margin, yy, pageW - margin, yy);
       }
     },
   });

@@ -99,10 +99,18 @@ function ExpensesList() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold tabular text-[color:var(--debit)]">{format(e.amount)}</p>
-                  <button className="text-[10px] text-muted-foreground hover:text-destructive"
-                    onClick={() => onDelete(e.id!)}>
-                    <Trash2 className="inline h-3 w-3" /> delete
-                  </button>
+                  <div className="mt-1 flex items-center justify-end gap-1">
+                    <button aria-label="Edit"
+                      onClick={() => navigate({ to: "/expenses/new", search: { id: e.id! } })}
+                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button aria-label="Delete"
+                      onClick={() => onDelete(e.id!)}
+                      className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </Card>
             </motion.li>

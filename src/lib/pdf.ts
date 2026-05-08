@@ -1,6 +1,12 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
+import { saveFile } from "./native-download";
+
+async function savePdf(doc: jsPDF, filename: string): Promise<{ path?: string }> {
+  const blob = doc.output("blob");
+  return saveFile(filename, blob, "application/pdf");
+}
 
 const TEAL: [number, number, number] = [13, 148, 136];
 const RED: [number, number, number] = [220, 38, 38];

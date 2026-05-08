@@ -27,13 +27,8 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-function downloadFile(name: string, mime: string, content: string) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+async function downloadFile(name: string, mime: string, content: string) {
+  return saveFile(name, content, mime);
 }
 
 

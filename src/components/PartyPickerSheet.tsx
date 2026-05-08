@@ -7,18 +7,16 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { db, type PartyType, type TxnType } from "@/lib/db";
+import { db, type TxnType } from "@/lib/db";
 import { Avatar } from "@/routes/customers.index";
 
 export function PartyPickerSheet({
   trigger,
   title,
-  filterType,
   txnType,
 }: {
   trigger: ReactNode;
   title: string;
-  filterType: PartyType;
   txnType: TxnType;
 }) {
   const [open, setOpen] = useState(false);
@@ -29,9 +27,7 @@ export function PartyPickerSheet({
     []
   );
   const list = (parties || []).filter(
-    p =>
-      p.type === filterType &&
-      (!q || p.name.toLowerCase().includes(q.toLowerCase()) || (p.phone || "").includes(q))
+    p => !q || p.name.toLowerCase().includes(q.toLowerCase()) || (p.phone || "").includes(q)
   );
 
   const pick = (id: number) => {
@@ -54,16 +50,10 @@ export function PartyPickerSheet({
           <div className="max-h-[55vh] space-y-1.5 overflow-y-auto">
             {list.length === 0 && (
               <div className="rounded-2xl border border-dashed p-6 text-center">
-                <p className="text-sm font-medium">No {filterType}s yet</p>
+                <p className="text-sm font-medium">No parties yet</p>
                 <p className="mb-3 text-xs text-muted-foreground">Add one to start recording.</p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setOpen(false);
-                    nav({ to: "/customers/new", search: { type: filterType } as any });
-                  }}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" /> Add {filterType}
+                <Button size="sm" onClick={() => { setOpen(false); nav({ to: "/customers/new" }); }}>
+                  <UserPlus className="mr-2 h-4 w-4" /> Add party
                 </Button>
               </div>
             )}
@@ -76,7 +66,7 @@ export function PartyPickerSheet({
                 <Avatar name={p.name} photo={p.photo} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{p.name}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{p.phone || p.type}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{p.phone || "Party"}</p>
                 </div>
               </button>
             ))}
@@ -84,12 +74,9 @@ export function PartyPickerSheet({
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => {
-              setOpen(false);
-              nav({ to: "/customers/new", search: { type: filterType } as any });
-            }}
+            onClick={() => { setOpen(false); nav({ to: "/customers/new" }); }}
           >
-            <UserPlus className="mr-2 h-4 w-4" /> New {filterType}
+            <UserPlus className="mr-2 h-4 w-4" /> New party
           </Button>
         </div>
       </SheetContent>

@@ -1,1 +1,0 @@
-import{u as e,d as o,D as n,q as u}from"./index.mobile-Cj8pb7Bm.js";function y(){const r=e(()=>o.settings.toArray().then(s=>s[0]??n),[]),t=r?.currencySymbol||"Rs";return{symbol:t,format:s=>u(s,t),settings:r}}export{y as u};

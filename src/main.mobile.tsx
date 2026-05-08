@@ -25,19 +25,6 @@ function MobileApp() {
       } catch {
         /* ignore */
       }
-
-      try {
-        const { Keyboard } = await import("@capacitor/keyboard");
-        const show = await Keyboard.addListener("keyboardWillShow", (info) => {
-          document.documentElement.style.setProperty("--kb-height", `${info.keyboardHeight}px`);
-        });
-        const hide = await Keyboard.addListener("keyboardWillHide", () => {
-          document.documentElement.style.setProperty("--kb-height", `0px`);
-        });
-        cleanups.push(() => { show.remove(); hide.remove(); });
-      } catch {
-        /* ignore */
-      }
     })();
 
     return () => { cleanups.forEach((c) => c()); };

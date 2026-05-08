@@ -25,6 +25,8 @@ export const Route = createFileRoute("/invoices/new")({
 
 function NewInvoice() {
   const navigate = useNavigate();
+  const { id: editId } = useSearch({ from: "/invoices/new" });
+  const isEdit = editId != null;
   const { symbol, format } = useCurrency();
   const parties = useLiveQuery(() => db.parties.where("type").equals("customer").toArray(), []);
 
@@ -41,11 +43,25 @@ function NewInvoice() {
 
   useEffect(() => {
     (async () => {
-      setNumber(await nextInvoiceNumber());
-      const s = await getSettings();
-      setTaxPercent(String(s.taxPercent || 0));
+      if (isEdit) {
+        const inv = await db.invoices.get(editId!);
+        if (!inv) { toast.error("Invoice not found"); navigate({ to: "/invoices" }); return; }
+        setNumber(inv.number);
+        setPartyId(inv.partyId ? String(inv.partyId) : "");
+        setPartyName(inv.partyName);
+        setDate(new Date(inv.date).toISOString().slice(0, 10));
+        setDueDate(inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0, 10) : "");
+        setItems(inv.items.length ? inv.items : [{ name: "", qty: 1, price: 0 }]);
+        setTaxPercent(String(inv.taxPercent || 0));
+        setDiscount(String(inv.discount || 0));
+        setNotes(inv.notes || "");
+      } else {
+        setNumber(await nextInvoiceNumber());
+        const s = await getSettings();
+        setTaxPercent(String(s.taxPercent || 0));
+      }
     })();
-  }, []);
+  }, [isEdit, editId, navigate]);
 
   const totals = calcInvoiceTotals({
     items, taxPercent: parseFloat(taxPercent) || 0, discount: parseFloat(discount) || 0,
@@ -73,25 +89,40 @@ function NewInvoice() {
 
     setSaving(true);
     try {
-      const id = await db.invoices.add({
-        number: number || (await nextInvoiceNumber()),
-        partyId: partyId ? Number(partyId) : undefined,
-        partyName: partyName.trim(),
-        date: new Date(date).getTime(),
-        dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-        items: cleanItems,
-        taxPercent: parseFloat(taxPercent) || 0,
-        discount: parseFloat(discount) || 0,
-        notes: notes.trim() || undefined,
-        status: "draft",
-        paidAmount: 0,
-        createdAt: Date.now(),
-      });
-      // bump counter
-      const s = await getSettings();
-      if (s.id) await db.settings.update(s.id, { invoiceCounter: (s.invoiceCounter || 1) + 1 });
-      toast.success("Invoice created");
-      navigate({ to: "/invoices/$id", params: { id: String(id) } });
+      if (isEdit) {
+        await db.invoices.update(editId!, {
+          number: number || (await nextInvoiceNumber()),
+          partyId: partyId ? Number(partyId) : undefined,
+          partyName: partyName.trim(),
+          date: new Date(date).getTime(),
+          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+          items: cleanItems,
+          taxPercent: parseFloat(taxPercent) || 0,
+          discount: parseFloat(discount) || 0,
+          notes: notes.trim() || undefined,
+        });
+        toast.success("Invoice updated");
+        navigate({ to: "/invoices/$id", params: { id: String(editId) } });
+      } else {
+        const id = await db.invoices.add({
+          number: number || (await nextInvoiceNumber()),
+          partyId: partyId ? Number(partyId) : undefined,
+          partyName: partyName.trim(),
+          date: new Date(date).getTime(),
+          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+          items: cleanItems,
+          taxPercent: parseFloat(taxPercent) || 0,
+          discount: parseFloat(discount) || 0,
+          notes: notes.trim() || undefined,
+          status: "draft",
+          paidAmount: 0,
+          createdAt: Date.now(),
+        });
+        const s = await getSettings();
+        if (s.id) await db.settings.update(s.id, { invoiceCounter: (s.invoiceCounter || 1) + 1 });
+        toast.success("Invoice created");
+        navigate({ to: "/invoices/$id", params: { id: String(id) } });
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed");
     } finally {

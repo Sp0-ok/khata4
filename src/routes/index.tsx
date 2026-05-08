@@ -42,6 +42,22 @@ function Dashboard() {
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
   const net = receivable - payable;
 
+  const [eggOpen, setEggOpen] = useState(false);
+  const holdTimer = useRef<number | null>(null);
+  const holdFired = useRef(false);
+
+  const startHold = () => {
+    holdFired.current = false;
+    holdTimer.current = window.setTimeout(() => {
+      holdFired.current = true;
+      haptic([20, 40, 80]);
+      setEggOpen(true);
+    }, 5000);
+  };
+  const cancelHold = () => {
+    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
+  };
+
   return (
     <AppShell>
       <header className="flex items-start justify-between px-5 pt-7 pb-3">
@@ -52,11 +68,51 @@ function Dashboard() {
         <Link
           to="/settings"
           aria-label="Settings"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
+          onMouseDown={startHold}
+          onMouseUp={cancelHold}
+          onMouseLeave={cancelHold}
+          onTouchStart={startHold}
+          onTouchEnd={cancelHold}
+          onTouchCancel={cancelHold}
+          onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />
         </Link>
       </header>
+
+      <AnimatePresence>
+        {eggOpen && (
+          <motion.div
+            key="egg"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setEggOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.6, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
+              className="rounded-3xl px-8 py-7 text-center text-white shadow-[var(--shadow-elevated)]"
+              style={{ background: "var(--gradient-primary)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+                className="mx-auto mb-3 inline-block"
+              >
+                <Heart className="h-10 w-10 fill-white text-white drop-shadow" />
+              </motion.div>
+              <p className="text-sm uppercase tracking-[0.25em] opacity-90">Made with love</p>
+              <p className="mt-1 text-2xl font-bold">by Sp0_ok</p>
+              <p className="mt-3 text-[11px] opacity-75">Tap anywhere to close</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <section className="px-4">
         <motion.div

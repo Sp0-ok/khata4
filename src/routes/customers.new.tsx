@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { ChevronLeft, Camera, X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,14 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { db, type PartyType } from "@/lib/db";
+import { db } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
 import { Avatar } from "./customers.index";
 
 export const Route = createFileRoute("/customers/new")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    type: (s.type as PartyType) || "customer",
-  }),
   head: () => ({ meta: [{ title: "Add party — Hisaab Kitaab" }] }),
   component: NewParty,
 });

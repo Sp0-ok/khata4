@@ -23,6 +23,8 @@ export const Route = createFileRoute("/expenses/new")({
 
 function NewExpense() {
   const navigate = useNavigate();
+  const { id: editId } = useSearch({ from: "/expenses/new" });
+  const isEdit = editId != null;
   const { symbol } = useCurrency();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -33,6 +35,17 @@ function NewExpense() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!isEdit) return;
+    db.expenses.get(editId!).then(e => {
+      if (!e) { toast.error("Expense not found"); navigate({ to: "/expenses" }); return; }
+      setTitle(e.title); setAmount(String(e.amount)); setCategory(e.category);
+      setVendor(e.vendor || ""); setMethod(e.method);
+      setDate(new Date(e.date).toISOString().slice(0, 10));
+      setNotes(e.notes || "");
+    });
+  }, [isEdit, editId, navigate]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error("Title is required");
@@ -40,7 +53,7 @@ function NewExpense() {
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     setSaving(true);
     try {
-      await db.expenses.add({
+      const payload = {
         title: title.trim(),
         amount: amt,
         category,
@@ -48,9 +61,14 @@ function NewExpense() {
         method,
         date: new Date(date).getTime(),
         notes: notes.trim() || undefined,
-        createdAt: Date.now(),
-      });
-      toast.success("Expense saved");
+      };
+      if (isEdit) {
+        await db.expenses.update(editId!, payload);
+        toast.success("Expense updated");
+      } else {
+        await db.expenses.add({ ...payload, createdAt: Date.now() });
+        toast.success("Expense saved");
+      }
       navigate({ to: "/expenses" });
     } catch (err: any) {
       toast.error(err.message || "Failed");

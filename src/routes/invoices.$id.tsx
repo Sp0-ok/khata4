@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
-import { ChevronLeft, FileDown, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
+import { ChevronLeft, FileDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";

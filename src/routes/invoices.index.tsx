@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { FileText, Plus, Search } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,41 +69,39 @@ function InvoicesList() {
       </div>
 
       <ul className="mt-3 space-y-2 px-4">
-        <AnimatePresence initial={false}>
-          {filtered.map(inv => {
-            const { total } = calcInvoiceTotals(inv);
-            const due = Math.max(0, total - (inv.paidAmount || 0));
-            return (
-              <motion.li key={inv.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Link to="/invoices/$id" params={{ id: String(inv.id) }}>
-                  <Card className="flex items-center gap-3 rounded-2xl p-3 transition-colors hover:bg-accent/30">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-semibold">{inv.number} · {inv.partyName}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        {new Date(inv.date).toLocaleDateString()} · {inv.items.length} item(s)
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold tabular">{format(total)}</p>
-                      <span className={cn(
-                        "inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase",
-                        inv.status === "paid" && "bg-[color:var(--credit)]/15 text-[color:var(--credit)]",
-                        inv.status === "partial" && "bg-warning/20 text-warning-foreground",
-                        inv.status === "sent" && "bg-primary/15 text-primary",
-                        inv.status === "draft" && "bg-muted text-muted-foreground",
-                      )}>
-                        {inv.status === "partial" ? `Due ${format(due)}` : inv.status}
-                      </span>
-                    </div>
-                  </Card>
-                </Link>
-              </motion.li>
-            );
-          })}
-        </AnimatePresence>
+        {filtered.map(inv => {
+          const { total } = calcInvoiceTotals(inv);
+          const due = Math.max(0, total - (inv.paidAmount || 0));
+          return (
+            <li key={inv.id}>
+              <Link to="/invoices/$id" params={{ id: String(inv.id) }}>
+                <Card className="flex items-center gap-3 rounded-2xl p-3 hover:bg-accent/30">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-semibold">{inv.number} · {inv.partyName}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {new Date(inv.date).toLocaleDateString()} · {inv.items.length} item(s)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold tabular">{format(total)}</p>
+                    <span className={cn(
+                      "inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase",
+                      inv.status === "paid" && "bg-[color:var(--credit)]/15 text-[color:var(--credit)]",
+                      inv.status === "partial" && "bg-warning/20 text-warning-foreground",
+                      inv.status === "sent" && "bg-primary/15 text-primary",
+                      inv.status === "draft" && "bg-muted text-muted-foreground",
+                    )}>
+                      {inv.status === "partial" ? `Due ${format(due)}` : inv.status}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            </li>
+          );
+        })}
 
         {filtered.length === 0 && (
           <Card className="flex flex-col items-center gap-2 p-10 text-center">

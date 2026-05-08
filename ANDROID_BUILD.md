@@ -32,7 +32,14 @@ Then press **Run** to install on a connected device, or **Build → Generate Sig
 Replace `resources/icon.png` (1024×1024) and re-run:
 
 ```bash
-npx capacitor-assets generate --android --iconBackgroundColor "#0f766e"
+npm run android:sync
+```
+
+If you need to regenerate launcher PNG density buckets manually, resize
+`resources/icon.png` into the `android/app/src/main/res/mipmap-*` folders while
+preserving transparency. Do **not** put it on a white/colored canvas.
+
+```bash
 npm run android:sync
 ```
 

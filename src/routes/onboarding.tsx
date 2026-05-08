@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ChevronRight, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -45,14 +44,8 @@ function Onboarding() {
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <AnimatePresence mode="wait">
-            {step < 3 ? (
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-6"
-              >
+          {step < 3 ? (
+              <div className="space-y-6">
                 <div
                   className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl text-primary-foreground shadow-[var(--shadow-elevated)]"
                   style={{ background: "var(--gradient-primary)" }}
@@ -64,13 +57,9 @@ function Onboarding() {
                   <h1 className="mt-1 text-2xl font-bold">{slides[step].title}</h1>
                   <p className="mt-2 text-sm text-muted-foreground">{slides[step].body}</p>
                 </div>
-              </motion.div>
+              </div>
             ) : (
-              <motion.div
-                key="setup"
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                className="w-full space-y-5 text-left"
-              >
+              <div className="w-full space-y-5 text-left">
                 <div className="space-y-1 text-center">
                   <Sparkles className="mx-auto h-8 w-8 text-primary" />
                   <h1 className="text-2xl font-bold">Set up your business</h1>
@@ -97,12 +86,11 @@ function Onboarding() {
                     ))}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </div>
 
-        <div className="space-y-2 safe-bottom">
+        <div className="grid gap-2 safe-bottom">
           {step < 3 ? (
             <Button onClick={() => setStep(s => s + 1)} className="h-12 w-full text-base font-semibold">
               {step === 2 ? "Get started" : "Next"} <ChevronRight className="ml-1 h-4 w-4" />
@@ -113,7 +101,7 @@ function Onboarding() {
             </Button>
           )}
           {step < 3 && (
-            <button onClick={finish} className="block w-full py-2 text-xs font-medium text-muted-foreground">
+            <button onClick={finish} className="flex h-10 w-full items-center justify-center text-center text-xs font-medium text-muted-foreground">
               Skip
             </button>
           )}

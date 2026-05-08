@@ -123,7 +123,7 @@ function Dashboard() {
               <div className="rounded-full bg-accent p-3"><TrendingUp className="h-6 w-6 text-primary" /></div>
               <div>
                 <p className="font-semibold">Start your first khata</p>
-                <p className="text-xs text-muted-foreground">Add a customer or supplier and record transactions.</p>
+                <p className="text-xs text-muted-foreground">Add a party and record transactions.</p>
               </div>
               <Button asChild size="sm"><Link to="/customers/new">Add party</Link></Button>
             </Card>

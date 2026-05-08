@@ -64,7 +64,7 @@ function CustomersList() {
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold">{party.name}</p>
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {party.phone || (party.type === "customer" ? "Customer" : "Supplier")}
+                      {party.phone || "No phone"}
                     </p>
                   </div>
                   <div className="text-right">

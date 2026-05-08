@@ -1,14 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
-import { ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2, Coins, Search } from "lucide-react";
+import {
+  ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2,
+  Coins, Search, FileSpreadsheet, Hash,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
+import { db, getSettings, updateSettings, ALL_CURRENCIES, calcInvoiceTotals } from "@/lib/db";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +25,30 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+function downloadFile(name: string, mime: string, content: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v: any): string {
+  if (v == null) return "";
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function toCSV(rows: Record<string, any>[]): string {
+  if (!rows.length) return "";
+  const headers = Object.keys(rows[0]);
+  return [
+    headers.join(","),
+    ...rows.map(r => headers.map(h => csvEscape(r[h])).join(",")),
+  ].join("\n");
+}
+
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), []);
   const { theme, setTheme } = useTheme();
@@ -34,29 +61,88 @@ function SettingsPage() {
     return ALL_CURRENCIES.filter(c =>
       c.c.toLowerCase().includes(q) ||
       c.name.toLowerCase().includes(q) ||
-      c.s.toLowerCase().includes(q)
+      c.s.toLowerCase().includes(q),
     );
   }, [curQ]);
 
   if (!settings) return <AppShell><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
 
-  const onExport = async () => {
+  const onExportJSON = async () => {
     try {
       const data = {
-        version: 1,
+        version: 2,
         app: "Hisaab Kitaab",
         exportedAt: new Date().toISOString(),
         settings: await db.settings.toArray(),
         parties: await db.parties.toArray(),
         transactions: await db.transactions.toArray(),
+        invoices: await db.invoices.toArray(),
+        expenses: await db.expenses.toArray(),
       };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `hisaab-kitaab-backup-${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      downloadFile(
+        `hisaab-kitaab-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        "application/json",
+        JSON.stringify(data, null, 2),
+      );
       toast.success("Backup downloaded");
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    }
+  };
+
+  const onExportCSV = async (kind: "transactions" | "invoices" | "expenses" | "parties") => {
+    try {
+      let rows: any[] = [];
+      if (kind === "transactions") {
+        const [parties, txns] = await Promise.all([db.parties.toArray(), db.transactions.toArray()]);
+        const pmap = new Map(parties.map(p => [p.id, p.name]));
+        rows = txns.map(t => ({
+          date: new Date(t.date).toISOString().slice(0, 10),
+          party: pmap.get(t.partyId) || "",
+          type: t.type,
+          amount: t.amount,
+          method: t.method,
+          note: t.note || "",
+        }));
+      } else if (kind === "invoices") {
+        const invs = await db.invoices.toArray();
+        rows = invs.map(i => {
+          const t = calcInvoiceTotals(i);
+          return {
+            number: i.number,
+            date: new Date(i.date).toISOString().slice(0, 10),
+            customer: i.partyName,
+            items: i.items.length,
+            subtotal: t.subtotal,
+            discount: i.discount,
+            tax: t.tax,
+            total: t.total,
+            paid: i.paidAmount,
+            due: Math.max(0, t.total - i.paidAmount),
+            status: i.status,
+          };
+        });
+      } else if (kind === "expenses") {
+        const exps = await db.expenses.toArray();
+        rows = exps.map(e => ({
+          date: new Date(e.date).toISOString().slice(0, 10),
+          title: e.title,
+          category: e.category,
+          vendor: e.vendor || "",
+          method: e.method,
+          amount: e.amount,
+          notes: e.notes || "",
+        }));
+      } else {
+        const parties = await db.parties.toArray();
+        rows = parties.map(p => ({
+          name: p.name, type: p.type, phone: p.phone || "",
+          email: p.email || "", address: p.address || "", openingBalance: p.openingBalance,
+        }));
+      }
+      if (!rows.length) return toast.info("Nothing to export");
+      downloadFile(`${kind}-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv", toCSV(rows));
+      toast.success(`${rows.length} rows exported`);
     } catch (e: any) {
       toast.error(e.message || "Export failed");
     }
@@ -69,14 +155,24 @@ function SettingsPage() {
       const text = await f.text();
       const data = JSON.parse(text);
       if (!Array.isArray(data.parties) || !Array.isArray(data.transactions)) throw new Error("Invalid backup file");
-      await db.transaction("rw", db.parties, db.transactions, async () => {
+      await db.transaction("rw", db.parties, db.transactions, db.invoices, db.expenses, async () => {
         await db.parties.clear();
         await db.transactions.clear();
-        // strip ids to avoid collisions
+        await db.invoices.clear();
+        await db.expenses.clear();
         await db.parties.bulkAdd(data.parties.map((p: any) => { const { id, ...r } = p; return r; }));
         await db.transactions.bulkAdd(data.transactions.map((t: any) => { const { id, ...r } = t; return r; }));
+        if (Array.isArray(data.invoices)) {
+          await db.invoices.bulkAdd(data.invoices.map((i: any) => { const { id, ...r } = i; return r; }));
+        }
+        if (Array.isArray(data.expenses)) {
+          await db.expenses.bulkAdd(data.expenses.map((x: any) => { const { id, ...r } = x; return r; }));
+        }
       });
-      toast.success(`Restored ${data.parties.length} parties, ${data.transactions.length} transactions`);
+      toast.success(
+        `Restored ${data.parties.length} parties, ${data.transactions.length} txns, ` +
+        `${data.invoices?.length || 0} invoices, ${data.expenses?.length || 0} expenses`,
+      );
     } catch (err: any) {
       toast.error(err.message || "Invalid backup file");
     } finally {
@@ -86,9 +182,11 @@ function SettingsPage() {
   };
 
   const onWipe = async () => {
-    await db.transaction("rw", db.parties, db.transactions, async () => {
+    await db.transaction("rw", db.parties, db.transactions, db.invoices, db.expenses, async () => {
       await db.parties.clear();
       await db.transactions.clear();
+      await db.invoices.clear();
+      await db.expenses.clear();
     });
     toast.success("All data cleared");
   };
@@ -112,14 +210,34 @@ function SettingsPage() {
           <div className="space-y-1.5">
             <Label className="text-xs">Owner name</Label>
             <Input defaultValue={settings.ownerName || ""}
-              onBlur={e => updateSettings({ ownerName: e.target.value })}
-              maxLength={80} />
+              onBlur={e => updateSettings({ ownerName: e.target.value })} maxLength={80} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Phone</Label>
             <Input defaultValue={settings.phone || ""}
-              onBlur={e => updateSettings({ phone: e.target.value })}
-              inputMode="tel" maxLength={20} />
+              onBlur={e => updateSettings({ phone: e.target.value })} inputMode="tel" maxLength={20} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Address (shown on invoices)</Label>
+            <Input defaultValue={settings.address || ""}
+              onBlur={e => updateSettings({ address: e.target.value })} maxLength={200} />
+          </div>
+        </Card>
+
+        <Card className="space-y-3 rounded-2xl p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold"><Hash className="h-4 w-4 text-primary" /> Invoicing</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Invoice prefix</Label>
+              <Input defaultValue={settings.invoicePrefix || "INV-"}
+                onBlur={e => updateSettings({ invoicePrefix: e.target.value || "INV-" })} maxLength={10} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Default tax %</Label>
+              <Input type="number" inputMode="decimal" step="0.01" min="0"
+                defaultValue={settings.taxPercent || 0}
+                onBlur={e => updateSettings({ taxPercent: parseFloat(e.target.value) || 0 })} />
+            </div>
           </div>
         </Card>
 
@@ -141,7 +259,7 @@ function SettingsPage() {
                 onClick={() => updateSettings({ currency: c, currencySymbol: s })}
                 className={cn(
                   "rounded-xl border px-3 py-2 text-left text-sm font-medium transition-colors",
-                  settings.currency === c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                  settings.currency === c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent",
                 )}
               >
                 <span className="block truncate text-[10px] text-muted-foreground">{s} · {name}</span>
@@ -167,7 +285,7 @@ function SettingsPage() {
                 onClick={() => setTheme(val)}
                 className={cn(
                   "flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors",
-                  theme === val ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
+                  theme === val ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -179,18 +297,33 @@ function SettingsPage() {
 
         <Card className="space-y-3 rounded-2xl p-4">
           <div className="text-sm font-semibold">Backup &amp; data</div>
-          <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={onExport}>
-            <Download className="mr-2 h-4 w-4" /> Export backup (JSON)
+          <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={onExportJSON}>
+            <Download className="mr-2 h-4 w-4" /> Full backup (JSON)
           </Button>
           <label className="block">
             <span className={cn(
               "flex h-11 w-full cursor-pointer items-center rounded-xl border border-input bg-background px-4 text-sm font-medium hover:bg-accent",
-              busy && "pointer-events-none opacity-50"
+              busy && "pointer-events-none opacity-50",
             )}>
-              <Upload className="mr-2 h-4 w-4" /> {busy ? "Importing…" : "Import backup"}
+              <Upload className="mr-2 h-4 w-4" /> {busy ? "Importing…" : "Restore backup"}
             </span>
             <input type="file" accept="application/json,.json" hidden onChange={onImport} disabled={busy} />
           </label>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("transactions")}>
+              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Txns CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("invoices")}>
+              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Invoices CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("expenses")}>
+              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Expenses CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("parties")}>
+              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Parties CSV
+            </Button>
+          </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -202,7 +335,7 @@ function SettingsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Erase everything?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This deletes all parties and transactions from this device. Export a backup first if you want to keep them.
+                  Deletes all parties, transactions, invoices and expenses on this device. Export a backup first.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

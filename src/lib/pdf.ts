@@ -1,6 +1,8 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { db, type Party, formatMoney } from "./db";
+import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
+
+const TEAL: [number, number, number] = [13, 148, 136];
 
 export async function generateStatementPDF(party: Party, businessName: string, currencySymbol: string) {
   const txns = await db.transactions.where("partyId").equals(party.id!).sortBy("date");
@@ -8,8 +10,7 @@ export async function generateStatementPDF(party: Party, businessName: string, c
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
 
-  // Header
-  doc.setFillColor(13, 148, 136);
+  doc.setFillColor(...TEAL);
   doc.rect(0, 0, w, 28, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16); doc.setFont("helvetica", "bold");
@@ -17,7 +18,6 @@ export async function generateStatementPDF(party: Party, businessName: string, c
   doc.setFontSize(10); doc.setFont("helvetica", "normal");
   doc.text("Account Statement", 14, 21);
 
-  // Party info
   doc.setTextColor(30);
   doc.setFontSize(12); doc.setFont("helvetica", "bold");
   doc.text(party.name, 14, 40);
@@ -27,7 +27,6 @@ export async function generateStatementPDF(party: Party, businessName: string, c
   doc.text(`Type: ${party.type}`, 14, 52);
   doc.text(`Generated: ${new Date().toLocaleDateString()}`, w - 14, 46, { align: "right" });
 
-  // Table
   let running = party.openingBalance || 0;
   const rows = [
     ["Opening", "—", "—", "—", formatMoney(running, currencySymbol)],
@@ -47,7 +46,7 @@ export async function generateStatementPDF(party: Party, businessName: string, c
     startY: 60,
     head: [["Date", "Note", "Given", "Received", "Balance"]],
     body: rows,
-    headStyles: { fillColor: [13, 148, 136], textColor: 255, fontSize: 9 },
+    headStyles: { fillColor: TEAL, textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 9 },
     alternateRowStyles: { fillColor: [245, 250, 248] },
     margin: { left: 14, right: 14 },
@@ -70,6 +69,100 @@ export async function generateStatementPDF(party: Party, businessName: string, c
 export async function downloadStatement(party: Party, businessName: string, symbol: string) {
   const doc = await generateStatementPDF(party, businessName, symbol);
   doc.save(`${party.name.replace(/\s+/g, "_")}_statement.pdf`);
+}
+
+export async function generateInvoicePDF(inv: Invoice) {
+  const s = await getSettings();
+  const sym = s.currencySymbol;
+  const { subtotal, tax, total } = calcInvoiceTotals(inv);
+
+  const doc = new jsPDF();
+  const w = doc.internal.pageSize.getWidth();
+
+  // Header band
+  doc.setFillColor(...TEAL);
+  doc.rect(0, 0, w, 32, "F");
+  doc.setTextColor(255);
+  doc.setFontSize(18); doc.setFont("helvetica", "bold");
+  doc.text(s.businessName, 14, 14);
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  if (s.phone) doc.text(s.phone, 14, 21);
+  if (s.address) doc.text(s.address, 14, 27);
+
+  doc.setFontSize(22); doc.setFont("helvetica", "bold");
+  doc.text("INVOICE", w - 14, 16, { align: "right" });
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(inv.number, w - 14, 23, { align: "right" });
+
+  // Bill to
+  doc.setTextColor(30);
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text("BILL TO", 14, 44);
+  doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(30);
+  doc.text(inv.partyName, 14, 51);
+
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(120);
+  doc.text(`Date: ${new Date(inv.date).toLocaleDateString()}`, w - 14, 44, { align: "right" });
+  if (inv.dueDate) doc.text(`Due: ${new Date(inv.dueDate).toLocaleDateString()}`, w - 14, 50, { align: "right" });
+  doc.text(`Status: ${inv.status.toUpperCase()}`, w - 14, 56, { align: "right" });
+
+  autoTable(doc, {
+    startY: 64,
+    head: [["#", "Item", "Qty", "Price", "Amount"]],
+    body: inv.items.map((it, i) => [
+      String(i + 1), it.name, String(it.qty),
+      formatMoney(it.price, sym), formatMoney(it.qty * it.price, sym),
+    ]),
+    headStyles: { fillColor: TEAL, textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 250, 248] },
+    columnStyles: { 0: { cellWidth: 10 }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+    margin: { left: 14, right: 14 },
+  });
+
+  let y = (doc as any).lastAutoTable.finalY + 8;
+  const rightX = w - 14;
+  const labelX = w - 60;
+  doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+  doc.text("Subtotal", labelX, y); doc.text(formatMoney(subtotal, sym), rightX, y, { align: "right" });
+  y += 6;
+  if (inv.discount > 0) {
+    doc.text("Discount", labelX, y); doc.text(`- ${formatMoney(inv.discount, sym)}`, rightX, y, { align: "right" });
+    y += 6;
+  }
+  if (inv.taxPercent > 0) {
+    doc.text(`Tax (${inv.taxPercent}%)`, labelX, y); doc.text(formatMoney(tax, sym), rightX, y, { align: "right" });
+    y += 6;
+  }
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(30);
+  doc.text("Total", labelX, y + 2); doc.text(formatMoney(total, sym), rightX, y + 2, { align: "right" });
+
+  if (inv.paidAmount > 0) {
+    y += 10;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(80);
+    doc.text("Paid", labelX, y); doc.text(formatMoney(inv.paidAmount, sym), rightX, y, { align: "right" });
+    y += 6;
+    doc.setFont("helvetica", "bold"); doc.setTextColor(total - inv.paidAmount > 0 ? 200 : 30, 0, 0);
+    doc.text("Balance Due", labelX, y); doc.text(formatMoney(total - inv.paidAmount, sym), rightX, y, { align: "right" });
+  }
+
+  if (inv.notes) {
+    doc.setFont("helvetica", "italic"); doc.setFontSize(9); doc.setTextColor(110);
+    doc.text("Notes:", 14, y + 16);
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(inv.notes, w - 28);
+    doc.text(lines, 14, y + 22);
+  }
+
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(140);
+  doc.text("Generated by Hisaab Kitaab", 14, 287);
+
+  return doc;
+}
+
+export async function downloadInvoice(inv: Invoice) {
+  const doc = await generateInvoicePDF(inv);
+  doc.save(`${inv.number}.pdf`);
 }
 
 export function shareWhatsApp(phone: string | undefined, text: string) {

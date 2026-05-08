@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { Plus, Search, UserCircle2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
@@ -51,36 +50,30 @@ function CustomersList() {
       </div>
 
       <ul className="mt-3 space-y-2 px-4">
-        <AnimatePresence initial={false}>
-          {filtered.map(({ party, balance }) => (
-            <motion.li
-              key={party.id}
-              layout
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            >
-              <Link to="/customers/$id" params={{ id: String(party.id) }}>
-                <Card className="flex items-center gap-3 rounded-2xl p-3 transition-colors hover:bg-accent/30">
-                  <Avatar name={party.name} photo={party.photo} />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold">{party.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {party.phone || "No phone"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className={cn(
-                      "text-sm font-bold tabular",
-                      balance > 0 ? "text-[color:var(--credit)]" : balance < 0 ? "text-[color:var(--debit)]" : "text-muted-foreground"
-                    )}>{format(balance)}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {balance > 0 ? "to get" : balance < 0 ? "to give" : "settled"}
-                    </p>
-                  </div>
-                </Card>
-              </Link>
-            </motion.li>
-          ))}
-        </AnimatePresence>
+        {filtered.map(({ party, balance }) => (
+          <li key={party.id}>
+            <Link to="/customers/$id" params={{ id: String(party.id) }}>
+              <Card className="flex items-center gap-3 rounded-2xl p-3 hover:bg-accent/30">
+                <Avatar name={party.name} photo={party.photo} />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-semibold">{party.name}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {party.phone || "No phone"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className={cn(
+                    "text-sm font-bold tabular",
+                    balance > 0 ? "text-[color:var(--credit)]" : balance < 0 ? "text-[color:var(--debit)]" : "text-muted-foreground"
+                  )}>{format(balance)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {balance > 0 ? "to get" : balance < 0 ? "to give" : "settled"}
+                  </p>
+                </div>
+              </Card>
+            </Link>
+          </li>
+        ))}
 
         {filtered.length === 0 && (
           <Card className="flex flex-col items-center gap-2 p-10 text-center">

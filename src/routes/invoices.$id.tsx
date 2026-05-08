@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { ChevronLeft, FileDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -117,24 +116,23 @@ function InvoiceDetail() {
       />
 
       <section className="px-4 pt-4">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        <div
           className="rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
           style={{ background: "var(--gradient-primary)" }}
         >
           <p className="text-[11px] uppercase tracking-widest opacity-80">Total</p>
           <p className="text-3xl font-bold tabular">{format(totals.total)}</p>
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-xl bg-white/15 p-2 backdrop-blur">
+            <div className="rounded-xl bg-primary-foreground/15 p-2">
               <p className="opacity-80">Paid</p>
               <p className="font-semibold tabular">{format(inv.paidAmount || 0)}</p>
             </div>
-            <div className="rounded-xl bg-white/15 p-2 backdrop-blur">
+            <div className="rounded-xl bg-primary-foreground/15 p-2">
               <p className="opacity-80">Due</p>
               <p className="font-semibold tabular">{format(due)}</p>
             </div>
           </div>
-        </motion.div>
+        </div>
       </section>
 
       <section className="px-4 pt-4">
@@ -207,7 +205,7 @@ function InvoiceDetail() {
         </section>
       )}
 
-      <div className="sticky bottom-0 mt-6 grid grid-cols-2 gap-2 border-t border-border bg-card/95 px-4 py-3 backdrop-blur safe-bottom">
+      <div className="sticky bottom-0 mt-6 grid grid-cols-2 gap-2 border-t border-border bg-card px-4 py-3 safe-bottom">
         <Button variant="outline" className="h-12" onClick={onWhatsApp}>
           <MessageCircle className="mr-2 h-4 w-4" /> Share
         </Button>

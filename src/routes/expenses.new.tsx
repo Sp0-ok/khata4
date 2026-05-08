@@ -87,7 +87,7 @@ function NewExpense() {
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-semibold opacity-90">{symbol}</span>
             <input
-              autoFocus type="number" inputMode="decimal" step="0.01" min="0"
+              type="number" inputMode="decimal" step="0.01" min="0"
               value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
               className="w-full bg-transparent text-4xl font-bold tabular outline-none placeholder:text-white/60"
             />

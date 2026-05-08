@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, FileText, Heart, Receipt, Settings as SettingsIcon,
   TrendingUp, Wallet,
@@ -90,50 +89,30 @@ function Dashboard() {
         </Link>
       </header>
 
-      <AnimatePresence>
-        {eggOpen && (
-          <motion.div
-            key="egg"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70"
-            onClick={closeEgg}
+      {eggOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/70 px-6" onClick={closeEgg}>
+          <div
+            className="rounded-3xl px-8 py-7 text-center text-primary-foreground shadow-[var(--shadow-elevated)]"
+            style={{ background: "var(--gradient-primary)" }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              initial={{ scale: 0.6, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.7, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 320, damping: 22 }}
-              className="rounded-3xl px-8 py-7 text-center text-white shadow-[var(--shadow-elevated)]"
-              style={{ background: "var(--gradient-primary)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <motion.div
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
-                className="mx-auto mb-3 inline-block"
-              >
-                <Heart className="h-10 w-10 fill-white text-white drop-shadow" />
-              </motion.div>
-              <p className="text-sm uppercase tracking-[0.25em] opacity-90">Made with love</p>
-              <p className="mt-1 text-2xl font-bold">by Sp0_ok</p>
-              <p className="mt-3 text-[11px] opacity-75">Tap anywhere to close</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Heart className="mx-auto mb-3 h-10 w-10 fill-current" />
+            <p className="text-sm uppercase tracking-[0.25em] opacity-90">Made with love</p>
+            <p className="mt-1 text-2xl font-bold">by Sp0_ok</p>
+            <p className="mt-3 text-[11px] opacity-75">Tap anywhere to close</p>
+          </div>
+        </div>
+      )}
 
       <section className="px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
+        <div
+          className="rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
           style={{
             background: net < 0
               ? "linear-gradient(135deg, var(--debit), oklch(0.5 0.18 25))"
               : "var(--gradient-primary)",
           }}
         >
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="flex items-center gap-2 text-xs opacity-90">
             <Wallet className="h-3.5 w-3.5" /> Net Balance · Parties
           </div>
@@ -144,7 +123,7 @@ function Dashboard() {
             <Stat label="You'll get" value={format(receivable)} icon={<ArrowDownLeft className="h-4 w-4" />} />
             <Stat label="You'll give" value={format(payable)} icon={<ArrowUpRight className="h-4 w-4" />} />
           </div>
-        </motion.div>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3 px-4 pt-4">
@@ -233,7 +212,7 @@ function Dashboard() {
 
 function Stat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+    <div className="rounded-2xl bg-primary-foreground/15 p-3">
       <div className="flex items-center gap-1.5 text-[11px] opacity-90">{icon}{label}</div>
       <div className="mt-1 text-base font-semibold tabular">{value}</div>
     </div>

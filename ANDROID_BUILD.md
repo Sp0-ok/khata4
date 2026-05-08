@@ -11,14 +11,18 @@ and the uploaded icon has been baked into all density buckets and the adaptive i
 
    ```bash
    npm install
-   npm run build           # produces /dist
-   npx cap sync android    # copies the latest web build into android/
+   npm run android:sync   # builds the SPA into dist-mobile/ and runs cap sync
    ```
+
+> The Android WebView needs a plain static bundle, so we use a separate
+> `npm run build:mobile` (configured in `vite.config.mobile.ts`) that outputs
+> to `dist-mobile/index.html`. The regular `npm run build` is for the
+> Cloudflare-hosted web preview and is **not** what Capacitor consumes.
 
 ## Open in Android Studio
 
 ```bash
-npx cap open android
+npm run android:open
 ```
 
 Then press **Run** to install on a connected device, or **Build → Generate Signed Bundle / APK** for a release build.
@@ -29,7 +33,7 @@ Replace `resources/icon.png` (1024×1024) and re-run:
 
 ```bash
 npx capacitor-assets generate --android --iconBackgroundColor "#0f766e"
-npx cap sync android
+npm run android:sync
 ```
 
 ## Where do downloads go?
@@ -40,4 +44,3 @@ storage where available). Most file managers list it under
 `Internal storage → Documents → Khata` or `Internal storage → Khata`.
 
 On the web, downloads continue to use the browser save dialog.
-</content>

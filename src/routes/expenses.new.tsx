@@ -78,7 +78,7 @@ function NewExpense() {
   return (
     <AppShell hideNav>
       <PageHeader
-        title="Add expense"
+        title={isEdit ? "Edit expense" : "Add expense"}
         back={<Link to="/expenses" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
       <form onSubmit={submit} className="space-y-4 px-4 pb-8 pt-4">

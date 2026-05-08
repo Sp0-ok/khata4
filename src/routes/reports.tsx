@@ -262,25 +262,57 @@ function Reports() {
   );
 }
 
-function buildMonths<T extends { date: number }, B extends Record<string, number>>(
-  items: T[], add: (it: T, b: B) => void, init: B,
+function buildBuckets<T extends { date: number }, B extends Record<string, number>>(
+  items: T[], period: Period, add: (it: T, b: B) => void, init: B,
 ): (B & { name: string })[] {
   const now = new Date();
+  const months = PERIOD_MONTHS[period];
+
+  if (period === "1m") {
+    // Daily buckets for current month
+    const days = now.getDate();
+    const buckets: (B & { name: string })[] = [];
+    for (let d = 1; d <= days; d++) {
+      buckets.push({ ...init, name: String(d) } as B & { name: string });
+    }
+    items.forEach(it => {
+      const dt = new Date(it.date);
+      if (dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()) {
+        const idx = dt.getDate() - 1;
+        if (idx >= 0 && idx < days) add(it, buckets[idx]);
+      }
+    });
+    return buckets;
+  }
+
+  // Monthly buckets
+  const count = period === "all" ? Math.max(1, monthsSpan(items)) : months;
   const buckets: (B & { name: string })[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.push({ ...init, name: d.toLocaleDateString(undefined, { month: "short" }) } as B & { name: string });
+    const label = count > 12
+      ? d.toLocaleDateString(undefined, { month: "short", year: "2-digit" })
+      : d.toLocaleDateString(undefined, { month: "short" });
+    buckets.push({ ...init, name: label } as B & { name: string });
   }
   const idxOf = (ts: number) => {
     const d = new Date(ts);
-    const idx = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    return 5 - idx;
+    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    return count - 1 - diff;
   };
   items.forEach(it => {
     const k = idxOf(it.date);
-    if (k >= 0 && k < 6) add(it, buckets[k]);
+    if (k >= 0 && k < count) add(it, buckets[k]);
   });
   return buckets;
+}
+
+function monthsSpan(items: { date: number }[]): number {
+  if (!items.length) return 6;
+  const now = new Date();
+  const earliest = items.reduce((m, it) => Math.min(m, it.date), Infinity);
+  const d = new Date(earliest);
+  return Math.min(36, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth()) + 1);
 }
 
 function MiniCard({ label, value, tone }: { label: string; value: string; tone: "credit" | "debit" }) {

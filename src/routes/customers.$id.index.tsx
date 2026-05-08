@@ -37,6 +37,7 @@ function CustomerDetail() {
   const { format, symbol } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<number | null>(null);
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
   const txns = useLiveQuery(
@@ -254,7 +255,7 @@ function CustomerDetail() {
                     <div className="mt-1 flex items-center justify-end gap-1">
                       <button
                         aria-label="Edit"
-                        onClick={() => navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } })}
+                        onClick={() => setPendingEdit(t.id!)}
                         className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                       ><Pencil className="h-3.5 w-3.5" /></button>
                       <button
@@ -286,6 +287,23 @@ function CustomerDetail() {
               }
               setPendingDelete(null);
             }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingEdit !== null} onOpenChange={o => !o && setPendingEdit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit this entry?</AlertDialogTitle>
+            <AlertDialogDescription>You can change the amount, type, date or note.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const tid = pendingEdit;
+              setPendingEdit(null);
+              if (tid != null) navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(tid) } });
+            }}>Edit</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

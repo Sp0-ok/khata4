@@ -35,20 +35,6 @@ function downloadFile(name: string, mime: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function csvEscape(v: any): string {
-  if (v == null) return "";
-  const s = String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function toCSV(rows: Record<string, any>[]): string {
-  if (!rows.length) return "";
-  const headers = Object.keys(rows[0]);
-  return [
-    headers.join(","),
-    ...rows.map(r => headers.map(h => csvEscape(r[h])).join(",")),
-  ].join("\n");
-}
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), []);

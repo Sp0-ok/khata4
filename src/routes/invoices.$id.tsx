@@ -37,7 +37,7 @@ function InvoiceDetail() {
   const { format } = useCurrency();
   const inv = useLiveQuery(() => db.invoices.get(iid), [iid]);
   const party = useLiveQuery(
-    () => inv?.partyId ? db.parties.get(inv.partyId) : Promise.resolve(undefined),
+    async () => inv?.partyId ? await db.parties.get(inv.partyId) : undefined,
     [inv?.partyId],
   );
   const [payAmt, setPayAmt] = useState("");

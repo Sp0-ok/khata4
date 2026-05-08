@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Receipt, Search, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -81,41 +80,39 @@ function ExpensesList() {
       </div>
 
       <ul className="mt-3 space-y-2 px-4">
-        <AnimatePresence initial={false}>
-          {filtered.map(e => (
-            <motion.li key={e.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <Card className="flex items-center gap-3 rounded-2xl p-3">
-                <div className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                  "bg-[color:var(--debit)]/15 text-[color:var(--debit)]",
-                )}>
-                  <Receipt className="h-5 w-5" />
+        {filtered.map(e => (
+          <li key={e.id}>
+            <Card className="flex items-center gap-3 rounded-2xl p-3">
+              <div className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                "bg-[color:var(--debit)]/15 text-[color:var(--debit)]",
+              )}>
+                <Receipt className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-semibold">{e.title}</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {e.category} · {new Date(e.date).toLocaleDateString()}{e.vendor ? ` · ${e.vendor}` : ""}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold tabular text-[color:var(--debit)]">{format(e.amount)}</p>
+                <div className="mt-1 flex items-center justify-end gap-1">
+                  <button aria-label="Edit"
+                    onClick={() => navigate({ to: "/expenses/new", search: { id: e.id! } })}
+                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button aria-label="Delete"
+                    onClick={() => onDelete(e.id!)}
+                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold">{e.title}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {e.category} · {new Date(e.date).toLocaleDateString()}{e.vendor ? ` · ${e.vendor}` : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold tabular text-[color:var(--debit)]">{format(e.amount)}</p>
-                  <div className="mt-1 flex items-center justify-end gap-1">
-                    <button aria-label="Edit"
-                      onClick={() => navigate({ to: "/expenses/new", search: { id: e.id! } })}
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button aria-label="Delete"
-                      onClick={() => onDelete(e.id!)}
-                      className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            </motion.li>
-          ))}
-        </AnimatePresence>
+              </div>
+            </Card>
+          </li>
+        ))}
 
         {filtered.length === 0 && (
           <Card className="flex flex-col items-center gap-2 p-10 text-center">

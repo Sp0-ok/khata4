@@ -3,9 +3,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useRef, useState } from "react";
 import {
   ArrowDownLeft, ArrowUpRight, ChevronLeft, FileText, MessageCircle, MoreVertical,
-  Phone, Trash2, Pencil, Upload,
+  Phone, Trash2, Pencil, Upload, Download,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Avatar } from "./customers.index";

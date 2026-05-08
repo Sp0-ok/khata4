@@ -3,6 +3,7 @@ import Dexie, { type Table } from "dexie";
 export type PartyType = "customer" | "supplier";
 export type TxnType = "credit" | "debit";
 export type PaymentMethod = "cash" | "bank" | "easypaisa" | "jazzcash" | "card" | "cheque" | "other";
+export type InvoiceStatus = "draft" | "sent" | "paid" | "partial";
 
 export interface Party {
   id?: number;
@@ -31,13 +32,51 @@ export interface Transaction {
   createdAt: number;
 }
 
+export interface InvoiceItem {
+  name: string;
+  qty: number;
+  price: number;
+}
+
+export interface Invoice {
+  id?: number;
+  number: string;
+  partyId?: number;
+  partyName: string;
+  date: number;
+  dueDate?: number;
+  items: InvoiceItem[];
+  taxPercent: number;
+  discount: number;
+  notes?: string;
+  status: InvoiceStatus;
+  paidAmount: number;
+  createdAt: number;
+}
+
+export interface Expense {
+  id?: number;
+  title: string;
+  amount: number;
+  category: string;
+  vendor?: string;
+  method: PaymentMethod;
+  date: number;
+  notes?: string;
+  createdAt: number;
+}
+
 export interface Settings {
   id?: number;
   businessName: string;
   ownerName?: string;
   phone?: string;
+  address?: string;
   currency: string;
   currencySymbol: string;
+  taxPercent: number;
+  invoicePrefix: string;
+  invoiceCounter: number;
   theme: "light" | "dark" | "system";
   pinHash?: string;
   onboarded: boolean;
@@ -47,6 +86,8 @@ export interface Settings {
 class LedgerDB extends Dexie {
   parties!: Table<Party, number>;
   transactions!: Table<Transaction, number>;
+  invoices!: Table<Invoice, number>;
+  expenses!: Table<Expense, number>;
   settings!: Table<Settings, number>;
 
   constructor() {
@@ -55,6 +96,20 @@ class LedgerDB extends Dexie {
       parties: "++id, name, type, phone, createdAt, updatedAt",
       transactions: "++id, partyId, type, date, createdAt",
       settings: "++id",
+    });
+    this.version(2).stores({
+      parties: "++id, name, type, phone, createdAt, updatedAt",
+      transactions: "++id, partyId, type, date, createdAt",
+      invoices: "++id, number, partyId, date, status, createdAt",
+      expenses: "++id, category, date, createdAt",
+      settings: "++id",
+    }).upgrade(async tx => {
+      // Backfill new settings fields for existing users.
+      await tx.table("settings").toCollection().modify((s: any) => {
+        if (s.taxPercent == null) s.taxPercent = 0;
+        if (!s.invoicePrefix) s.invoicePrefix = "INV-";
+        if (s.invoiceCounter == null) s.invoiceCounter = 1;
+      });
     });
   }
 }
@@ -65,17 +120,24 @@ export const DEFAULT_SETTINGS: Settings = {
   businessName: "My Business",
   currency: "PKR",
   currencySymbol: "Rs",
+  taxPercent: 0,
+  invoicePrefix: "INV-",
+  invoiceCounter: 1,
   theme: "system",
   onboarded: false,
 };
 
-// READ-ONLY: safe inside useLiveQuery. Returns default if none persisted.
+export const EXPENSE_CATEGORIES = [
+  "Rent", "Utilities", "Salaries", "Inventory", "Transport",
+  "Marketing", "Food", "Repairs", "Tax", "Office", "Other",
+];
+
+// READ-ONLY: safe inside useLiveQuery.
 export const getSettings = async (): Promise<Settings> => {
   const rows = await db.settings.toArray();
   return rows[0] ? rows[0] : { ...DEFAULT_SETTINGS };
 };
 
-// Call once at app boot — performs the write if needed.
 export const ensureSettings = async (): Promise<Settings> => {
   const rows = await db.settings.toArray();
   if (rows[0]) return rows[0];
@@ -111,12 +173,25 @@ export const getAllBalances = async () => {
   return parties.map(p => ({ party: p, balance: map.get(p.id!) || 0 }));
 };
 
+export const calcInvoiceTotals = (inv: Pick<Invoice, "items" | "taxPercent" | "discount">) => {
+  const subtotal = inv.items.reduce((s, i) => s + i.qty * i.price, 0);
+  const afterDiscount = Math.max(0, subtotal - (inv.discount || 0));
+  const tax = afterDiscount * ((inv.taxPercent || 0) / 100);
+  const total = afterDiscount + tax;
+  return { subtotal, tax, total };
+};
+
+export const nextInvoiceNumber = async (): Promise<string> => {
+  const s = await getSettings();
+  const num = (s.invoiceCounter || 1).toString().padStart(4, "0");
+  return `${s.invoicePrefix || "INV-"}${num}`;
+};
+
 export const formatMoney = (n: number, symbol = "Rs") => {
   const abs = Math.abs(n);
   return `${symbol} ${abs.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 };
 
-// Onboarding shows only these. Settings shows ALL_CURRENCIES.
 export const ONBOARDING_CURRENCIES = [
   { c: "PKR", s: "Rs", name: "Pakistani Rupee" },
   { c: "USD", s: "$", name: "US Dollar" },

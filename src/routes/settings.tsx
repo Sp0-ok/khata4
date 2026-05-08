@@ -168,18 +168,49 @@ function SettingsPage() {
       const text = await f.text();
       const data = JSON.parse(text);
       if (!Array.isArray(data.parties) || !Array.isArray(data.transactions)) throw new Error("Invalid backup file");
-      await db.transaction("rw", db.parties, db.transactions, db.invoices, db.expenses, async () => {
+
+      // Map old party IDs → newly inserted IDs so dependent records still link correctly.
+      const idMap = new Map<number, number>();
+
+      await db.transaction("rw", [db.parties, db.transactions, db.invoices, db.expenses, db.settings], async () => {
         await db.parties.clear();
         await db.transactions.clear();
         await db.invoices.clear();
         await db.expenses.clear();
-        await db.parties.bulkAdd(data.parties.map((p: any) => { const { id, ...r } = p; return r; }));
-        await db.transactions.bulkAdd(data.transactions.map((t: any) => { const { id, ...r } = t; return r; }));
+
+        // Re-insert parties one by one to capture new IDs.
+        for (const p of data.parties) {
+          const { id: oldId, ...rest } = p;
+          const newId = await db.parties.add(rest);
+          if (oldId != null) idMap.set(Number(oldId), newId);
+        }
+
+        const remappedTxns = data.transactions
+          .map((t: any) => {
+            const { id, partyId, ...rest } = t;
+            const mapped = idMap.get(Number(partyId));
+            if (mapped == null) return null;
+            return { ...rest, partyId: mapped };
+          })
+          .filter(Boolean);
+        if (remappedTxns.length) await db.transactions.bulkAdd(remappedTxns);
+
         if (Array.isArray(data.invoices)) {
-          await db.invoices.bulkAdd(data.invoices.map((i: any) => { const { id, ...r } = i; return r; }));
+          const remappedInvs = data.invoices.map((i: any) => {
+            const { id, partyId, ...rest } = i;
+            return { ...rest, partyId: partyId != null ? idMap.get(Number(partyId)) : undefined };
+          });
+          if (remappedInvs.length) await db.invoices.bulkAdd(remappedInvs);
         }
         if (Array.isArray(data.expenses)) {
           await db.expenses.bulkAdd(data.expenses.map((x: any) => { const { id, ...r } = x; return r; }));
+        }
+        // Restore settings (single row).
+        if (Array.isArray(data.settings) && data.settings[0]) {
+          const cur = await db.settings.toArray();
+          const { id: _sid, ...patch } = data.settings[0];
+          if (cur[0]) await db.settings.update(cur[0].id!, patch);
+          else await db.settings.add(patch);
         }
       });
       toast.success(

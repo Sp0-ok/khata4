@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { getAllBalances } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
@@ -18,23 +17,20 @@ export const Route = createFileRoute("/customers/")({
 
 function CustomersList() {
   const { format } = useCurrency();
-  const [tab, setTab] = useState<"all" | "customer" | "supplier">("all");
   const [q, setQ] = useState("");
   const balances = useLiveQuery(() => getAllBalances(), []);
 
   const filtered = useMemo(() => {
     if (!balances) return [];
-    return balances
-      .filter(b => tab === "all" ? true : b.party.type === tab)
-      .filter(b => !q || b.party.name.toLowerCase().includes(q.toLowerCase()) || b.party.phone?.includes(q));
-  }, [balances, tab, q]);
+    return balances.filter(b => !q || b.party.name.toLowerCase().includes(q.toLowerCase()) || b.party.phone?.includes(q));
+  }, [balances, q]);
 
   const totalGet = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const totalGive = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
 
   return (
     <AppShell>
-      <PageHeader title="Parties" subtitle="Customers & suppliers" />
+      <PageHeader title="Parties" subtitle="Everyone you do business with" />
 
       <div className="space-y-3 px-4 pt-4">
         <div className="grid grid-cols-2 gap-2">
@@ -52,14 +48,6 @@ function CustomersList() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or phone" className="h-11 rounded-xl pl-9" />
         </div>
-
-        <Tabs value={tab} onValueChange={v => setTab(v as any)}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="customer">Customers</TabsTrigger>
-            <TabsTrigger value="supplier">Suppliers</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
 
       <ul className="mt-3 space-y-2 px-4">
@@ -76,7 +64,7 @@ function CustomersList() {
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold">{party.name}</p>
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {party.phone || (party.type === "customer" ? "Customer" : "Supplier")}
+                      {party.phone || "No phone"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -98,7 +86,7 @@ function CustomersList() {
           <Card className="flex flex-col items-center gap-2 p-10 text-center">
             <UserCircle2 className="h-10 w-10 text-muted-foreground" />
             <p className="font-semibold">No parties yet</p>
-            <p className="text-xs text-muted-foreground">Tap + to add your first customer or supplier.</p>
+            <p className="text-xs text-muted-foreground">Tap + to add your first party.</p>
           </Card>
         )}
       </ul>

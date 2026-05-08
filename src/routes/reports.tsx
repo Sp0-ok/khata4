@@ -24,48 +24,63 @@ const PIE_COLORS = [
   "oklch(0.5 0.18 270)", "oklch(0.6 0.12 100)",
 ];
 
+type Period = "1m" | "3m" | "6m" | "12m" | "all";
+const PERIOD_MONTHS: Record<Period, number> = { "1m": 1, "3m": 3, "6m": 6, "12m": 12, all: 0 };
+const PERIOD_LABEL: Record<Period, string> = { "1m": "1M", "3m": "3M", "6m": "6M", "12m": "1Y", all: "All" };
+
 function Reports() {
   const { format, symbol } = useCurrency();
   const [view, setView] = useState<"parties" | "business">("parties");
   const [chartKind, setChartKind] = useState<"bars" | "lines">("bars");
+  const [period, setPeriod] = useState<Period>("6m");
 
   const balances = useLiveQuery(() => getAllBalances(), []);
   const txns = useLiveQuery(() => db.transactions.toArray(), []);
   const invoices = useLiveQuery(() => db.invoices.toArray(), []);
   const expenses = useLiveQuery(() => db.expenses.toArray(), []);
 
-  const partyTotals = useMemo(() => {
-    const t = txns || [];
-    return {
-      received: t.filter(x => x.type === "credit").reduce((s, x) => s + x.amount, 0),
-      given: t.filter(x => x.type === "debit").reduce((s, x) => s + x.amount, 0),
-    };
-  }, [txns]);
+  const cutoffTs = useMemo(() => {
+    if (period === "all") return 0;
+    const d = new Date();
+    d.setMonth(d.getMonth() - (PERIOD_MONTHS[period] - 1));
+    d.setDate(1); d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, [period]);
+
+  const fTxns = useMemo(() => (txns || []).filter(t => t.date >= cutoffTs), [txns, cutoffTs]);
+  const fInvoices = useMemo(() => (invoices || []).filter(i => i.date >= cutoffTs), [invoices, cutoffTs]);
+  const fExpenses = useMemo(() => (expenses || []).filter(e => e.date >= cutoffTs), [expenses, cutoffTs]);
+
+  const partyTotals = useMemo(() => ({
+    received: fTxns.filter(x => x.type === "credit").reduce((s, x) => s + x.amount, 0),
+    given: fTxns.filter(x => x.type === "debit").reduce((s, x) => s + x.amount, 0),
+  }), [fTxns]);
 
   const bizTotals = useMemo(() => {
-    const sales = (invoices || []).reduce((s, i) => s + calcInvoiceTotals(i).total, 0);
-    const exp = (expenses || []).reduce((s, e) => s + e.amount, 0);
+    const sales = fInvoices.reduce((s, i) => s + calcInvoiceTotals(i).total, 0);
+    const exp = fExpenses.reduce((s, e) => s + e.amount, 0);
     return { sales, expenses: exp, profit: sales - exp };
-  }, [invoices, expenses]);
+  }, [fInvoices, fExpenses]);
 
-  const monthlyParties = useMemo(() => buildMonths(txns || [],
+  const monthlyParties = useMemo(() => buildBuckets(fTxns, period,
     (it, b) => { if (it.type === "credit") b.received += it.amount; else b.given += it.amount; },
     { received: 0, given: 0 }
-  ), [txns]);
+  ), [fTxns, period]);
 
-  const monthlyBiz = useMemo(() => buildMonths(
-    [...(invoices || []).map(i => ({ date: i.date, _kind: "inv", amount: calcInvoiceTotals(i).total })),
-     ...(expenses || []).map(e => ({ date: e.date, _kind: "exp", amount: e.amount }))],
+  const monthlyBiz = useMemo(() => buildBuckets(
+    [...fInvoices.map(i => ({ date: i.date, _kind: "inv", amount: calcInvoiceTotals(i).total })),
+     ...fExpenses.map(e => ({ date: e.date, _kind: "exp", amount: e.amount }))],
+    period,
     (it, b) => { if (it._kind === "inv") b.sales += it.amount; else b.expenses += it.amount; },
     { sales: 0, expenses: 0 }
-  ), [invoices, expenses]);
+  ), [fInvoices, fExpenses, period]);
 
   const expenseByCategory = useMemo(() => {
     const map = new Map<string, number>();
     EXPENSE_CATEGORIES.forEach(c => map.set(c, 0));
-    (expenses || []).forEach(e => map.set(e.category, (map.get(e.category) || 0) + e.amount));
+    fExpenses.forEach(e => map.set(e.category, (map.get(e.category) || 0) + e.amount));
     return Array.from(map.entries()).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [expenses]);
+  }, [fExpenses]);
 
   const top = useMemo(() => [...(balances || [])]
     .filter(b => b.balance !== 0)
@@ -78,9 +93,11 @@ function Reports() {
   };
   const fmt = (v: number) => `${symbol} ${v.toLocaleString()}`;
 
+  const periodLabel = period === "all" ? "All time" : `Last ${PERIOD_LABEL[period]}`;
+
   return (
     <AppShell>
-      <PageHeader title="Reports" subtitle={view === "parties" ? "Customers & suppliers" : "Invoices & expenses"} />
+      <PageHeader title="Reports" subtitle={view === "parties" ? "Receivables & payables" : "Invoices & expenses"} />
 
       <div className="space-y-3 px-4 pt-4">
         <Tabs value={view} onValueChange={v => setView(v as any)}>
@@ -89,6 +106,20 @@ function Reports() {
             <TabsTrigger value="business">Business</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        <div className="flex gap-1 rounded-xl bg-muted p-1">
+          {(Object.keys(PERIOD_LABEL) as Period[]).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {PERIOD_LABEL[p]}
+            </button>
+          ))}
+        </div>
 
         <Tabs value={chartKind} onValueChange={v => setChartKind(v as any)}>
           <TabsList className="grid w-full grid-cols-2">
@@ -107,7 +138,7 @@ function Reports() {
 
           <section className="px-4 pt-4">
             <Card className="rounded-2xl p-4">
-              <h3 className="text-sm font-semibold">Last 6 months · Parties</h3>
+              <h3 className="text-sm font-semibold">{periodLabel} · Parties</h3>
               <div className="mt-3 h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartKind === "bars" ? (
@@ -176,7 +207,7 @@ function Reports() {
 
           <section className="px-4 pt-4">
             <Card className="rounded-2xl p-4">
-              <h3 className="text-sm font-semibold">Last 6 months · Business</h3>
+              <h3 className="text-sm font-semibold">{periodLabel} · Business</h3>
               <div className="mt-3 h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartKind === "bars" ? (
@@ -231,25 +262,57 @@ function Reports() {
   );
 }
 
-function buildMonths<T extends { date: number }, B extends Record<string, number>>(
-  items: T[], add: (it: T, b: B) => void, init: B,
+function buildBuckets<T extends { date: number }, B extends Record<string, number>>(
+  items: T[], period: Period, add: (it: T, b: B) => void, init: B,
 ): (B & { name: string })[] {
   const now = new Date();
+  const months = PERIOD_MONTHS[period];
+
+  if (period === "1m") {
+    // Daily buckets for current month
+    const days = now.getDate();
+    const buckets: (B & { name: string })[] = [];
+    for (let d = 1; d <= days; d++) {
+      buckets.push({ ...init, name: String(d) } as B & { name: string });
+    }
+    items.forEach(it => {
+      const dt = new Date(it.date);
+      if (dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()) {
+        const idx = dt.getDate() - 1;
+        if (idx >= 0 && idx < days) add(it, buckets[idx]);
+      }
+    });
+    return buckets;
+  }
+
+  // Monthly buckets
+  const count = period === "all" ? Math.max(1, monthsSpan(items)) : months;
   const buckets: (B & { name: string })[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.push({ ...init, name: d.toLocaleDateString(undefined, { month: "short" }) } as B & { name: string });
+    const label = count > 12
+      ? d.toLocaleDateString(undefined, { month: "short", year: "2-digit" })
+      : d.toLocaleDateString(undefined, { month: "short" });
+    buckets.push({ ...init, name: label } as B & { name: string });
   }
   const idxOf = (ts: number) => {
     const d = new Date(ts);
-    const idx = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    return 5 - idx;
+    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    return count - 1 - diff;
   };
   items.forEach(it => {
     const k = idxOf(it.date);
-    if (k >= 0 && k < 6) add(it, buckets[k]);
+    if (k >= 0 && k < count) add(it, buckets[k]);
   });
   return buckets;
+}
+
+function monthsSpan(items: { date: number }[]): number {
+  if (!items.length) return 6;
+  const now = new Date();
+  const earliest = items.reduce((m, it) => Math.min(m, it.date), Infinity);
+  const d = new Date(earliest);
+  return Math.min(36, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth()) + 1);
 }
 
 function MiniCard({ label, value, tone }: { label: string; value: string; tone: "credit" | "debit" }) {

@@ -21,6 +21,7 @@ import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as ExpensesNewRouteImport } from './routes/expenses.new'
 import { Route as CustomersNewRouteImport } from './routes/customers.new'
 import { Route as CustomersIdIndexRouteImport } from './routes/customers.$id.index'
+import { Route as CustomersIdEditRouteImport } from './routes/customers.$id.edit'
 import { Route as CustomersIdAddRouteImport } from './routes/customers.$id.add'
 import { Route as CustomersIdEditTxnIdRouteImport } from './routes/customers.$id.edit.$txnId'
 
@@ -84,15 +85,20 @@ const CustomersIdIndexRoute = CustomersIdIndexRouteImport.update({
   path: '/customers/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomersIdEditRoute = CustomersIdEditRouteImport.update({
+  id: '/customers/$id/edit',
+  path: '/customers/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomersIdAddRoute = CustomersIdAddRouteImport.update({
   id: '/customers/$id/add',
   path: '/customers/$id/add',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustomersIdEditTxnIdRoute = CustomersIdEditTxnIdRouteImport.update({
-  id: '/customers/$id/edit/$txnId',
-  path: '/customers/$id/edit/$txnId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$txnId',
+  path: '/$txnId',
+  getParentRoute: () => CustomersIdEditRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/expenses/': typeof ExpensesIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id/edit': typeof CustomersIdEditRouteWithChildren
   '/customers/$id/': typeof CustomersIdIndexRoute
   '/customers/$id/edit/$txnId': typeof CustomersIdEditTxnIdRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof ExpensesIndexRoute
   '/invoices': typeof InvoicesIndexRoute
   '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id/edit': typeof CustomersIdEditRouteWithChildren
   '/customers/$id': typeof CustomersIdIndexRoute
   '/customers/$id/edit/$txnId': typeof CustomersIdEditTxnIdRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/expenses/': typeof ExpensesIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/customers/$id/add': typeof CustomersIdAddRoute
+  '/customers/$id/edit': typeof CustomersIdEditRouteWithChildren
   '/customers/$id/': typeof CustomersIdIndexRoute
   '/customers/$id/edit/$txnId': typeof CustomersIdEditTxnIdRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/expenses/'
     | '/invoices/'
     | '/customers/$id/add'
+    | '/customers/$id/edit'
     | '/customers/$id/'
     | '/customers/$id/edit/$txnId'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/invoices'
     | '/customers/$id/add'
+    | '/customers/$id/edit'
     | '/customers/$id'
     | '/customers/$id/edit/$txnId'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/expenses/'
     | '/invoices/'
     | '/customers/$id/add'
+    | '/customers/$id/edit'
     | '/customers/$id/'
     | '/customers/$id/edit/$txnId'
   fileRoutesById: FileRoutesById
@@ -208,8 +220,8 @@ export interface RootRouteChildren {
   ExpensesIndexRoute: typeof ExpensesIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
   CustomersIdAddRoute: typeof CustomersIdAddRoute
+  CustomersIdEditRoute: typeof CustomersIdEditRouteWithChildren
   CustomersIdIndexRoute: typeof CustomersIdIndexRoute
-  CustomersIdEditTxnIdRoute: typeof CustomersIdEditTxnIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -298,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customers/$id/edit': {
+      id: '/customers/$id/edit'
+      path: '/customers/$id/edit'
+      fullPath: '/customers/$id/edit'
+      preLoaderRoute: typeof CustomersIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/customers/$id/add': {
       id: '/customers/$id/add'
       path: '/customers/$id/add'
@@ -307,13 +326,25 @@ declare module '@tanstack/react-router' {
     }
     '/customers/$id/edit/$txnId': {
       id: '/customers/$id/edit/$txnId'
-      path: '/customers/$id/edit/$txnId'
+      path: '/$txnId'
       fullPath: '/customers/$id/edit/$txnId'
       preLoaderRoute: typeof CustomersIdEditTxnIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof CustomersIdEditRoute
     }
   }
 }
+
+interface CustomersIdEditRouteChildren {
+  CustomersIdEditTxnIdRoute: typeof CustomersIdEditTxnIdRoute
+}
+
+const CustomersIdEditRouteChildren: CustomersIdEditRouteChildren = {
+  CustomersIdEditTxnIdRoute: CustomersIdEditTxnIdRoute,
+}
+
+const CustomersIdEditRouteWithChildren = CustomersIdEditRoute._addFileChildren(
+  CustomersIdEditRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -328,8 +359,8 @@ const rootRouteChildren: RootRouteChildren = {
   ExpensesIndexRoute: ExpensesIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
   CustomersIdAddRoute: CustomersIdAddRoute,
+  CustomersIdEditRoute: CustomersIdEditRouteWithChildren,
   CustomersIdIndexRoute: CustomersIdIndexRoute,
-  CustomersIdEditTxnIdRoute: CustomersIdEditTxnIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

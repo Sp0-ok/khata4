@@ -1,5 +1,6 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { ChevronLeft, Camera, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -7,21 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { db, type PartyType } from "@/lib/db";
+import { db } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
 import { Avatar } from "./customers.index";
 
-export const Route = createFileRoute("/customers/new")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    type: (s.type as PartyType) || "customer",
-  }),
-  head: () => ({ meta: [{ title: "Add party — Hisaab Kitaab" }] }),
-  component: NewParty,
+export const Route = createFileRoute("/customers/$id/edit")({
+  head: () => ({ meta: [{ title: "Edit party — Hisaab Kitaab" }] }),
+  component: EditParty,
 });
 
-function NewParty() {
+function EditParty() {
+  const { id } = Route.useParams();
+  const pid = Number(id);
   const navigate = useNavigate();
-  const { type } = useSearch({ from: "/customers/new" });
+  const party = useLiveQuery(() => db.parties.get(pid), [pid]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -29,12 +31,21 @@ function NewParty() {
   const [notes, setNotes] = useState("");
   const [opening, setOpening] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (party && !loaded) {
+      setName(party.name); setPhone(party.phone || ""); setEmail(party.email || "");
+      setAddress(party.address || ""); setNotes(party.notes || "");
+      setOpening(String(party.openingBalance || 0));
+      setPhoto(party.photo); setLoaded(true);
+    }
+  }, [party, loaded]);
 
   const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
     try { setPhoto(await downscaleImage(f, 256)); } catch (err: any) { toast.error(err.message); }
     finally { e.target.value = ""; }
   };
@@ -44,28 +55,29 @@ function NewParty() {
     if (!name.trim()) return toast.error("Name is required");
     setSaving(true);
     try {
-      const now = Date.now();
-      const id = await db.parties.add({
-        name: name.trim(), phone: phone.trim() || undefined,
-        email: email.trim() || undefined, address: address.trim() || undefined,
-        notes: notes.trim() || undefined, type, photo,
+      await db.parties.update(pid, {
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        address: address.trim() || undefined,
+        notes: notes.trim() || undefined,
         openingBalance: parseFloat(opening) || 0,
-        createdAt: now, updatedAt: now,
+        photo,
+        updatedAt: Date.now(),
       });
-      toast.success("Party added");
-      navigate({ to: "/customers/$id", params: { id: String(id) } });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save");
-    } finally {
-      setSaving(false);
-    }
+      toast.success("Party updated");
+      navigate({ to: "/customers/$id", params: { id } });
+    } catch (err: any) { toast.error(err.message || "Failed"); }
+    finally { setSaving(false); }
   };
+
+  if (!loaded) return <AppShell hideNav><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
 
   return (
     <AppShell hideNav>
       <PageHeader
-        title="Add party"
-        back={<Link to="/customers" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
+        title="Edit party"
+        back={<Link to="/customers/$id" params={{ id }} className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
       <form onSubmit={onSave} className="space-y-4 px-4 pb-8 pt-4">
         <div className="flex flex-col items-center gap-2 pt-2">
@@ -83,32 +95,18 @@ function NewParty() {
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
         </div>
 
-        <Field label="Name *">
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ali Traders" required maxLength={80} />
-        </Field>
-        <Field label="Phone">
-          <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="03xx-xxxxxxx" inputMode="tel" maxLength={20} />
-        </Field>
-        <Field label="Email">
-          <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="optional" type="email" maxLength={120} />
-        </Field>
-        <Field label="Address">
-          <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Shop / area" maxLength={200} />
-        </Field>
+        <Field label="Name *"><Input value={name} onChange={e => setName(e.target.value)} required maxLength={80} /></Field>
+        <Field label="Phone"><Input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" maxLength={20} /></Field>
+        <Field label="Email"><Input value={email} onChange={e => setEmail(e.target.value)} type="email" maxLength={120} /></Field>
+        <Field label="Address"><Input value={address} onChange={e => setAddress(e.target.value)} maxLength={200} /></Field>
         <Field label="Opening balance">
-          <Input
-            value={opening} onChange={e => setOpening(e.target.value)}
-            placeholder="0  (positive: they owe you, negative: you owe)"
-            inputMode="decimal" type="number" step="0.01"
-          />
+          <Input value={opening} onChange={e => setOpening(e.target.value)} inputMode="decimal" type="number" step="0.01" />
         </Field>
-        <Field label="Notes">
-          <Textarea value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} rows={3} />
-        </Field>
+        <Field label="Notes"><Textarea value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} rows={3} /></Field>
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">
           <Button type="submit" disabled={saving} className="h-12 w-full text-base font-semibold">
-            {saving ? "Saving…" : "Save party"}
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </form>

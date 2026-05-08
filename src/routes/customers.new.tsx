@@ -18,7 +18,6 @@ export const Route = createFileRoute("/customers/new")({
 
 function NewParty() {
   const navigate = useNavigate();
-  const { type } = useSearch({ from: "/customers/new" });
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");

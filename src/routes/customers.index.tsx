@@ -86,7 +86,7 @@ function CustomersList() {
           <Card className="flex flex-col items-center gap-2 p-10 text-center">
             <UserCircle2 className="h-10 w-10 text-muted-foreground" />
             <p className="font-semibold">No parties yet</p>
-            <p className="text-xs text-muted-foreground">Tap + to add your first customer or supplier.</p>
+            <p className="text-xs text-muted-foreground">Tap + to add your first party.</p>
           </Card>
         )}
       </ul>

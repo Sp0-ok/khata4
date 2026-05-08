@@ -1,6 +1,5 @@
 import Dexie, { type Table } from "dexie";
 
-export type PartyType = "customer" | "supplier";
 export type TxnType = "credit" | "debit";
 export type PaymentMethod = "cash" | "bank" | "easypaisa" | "jazzcash" | "card" | "cheque" | "other";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "partial";
@@ -11,7 +10,6 @@ export interface Party {
   phone?: string;
   email?: string;
   address?: string;
-  type: PartyType;
   photo?: string;
   notes?: string;
   openingBalance: number;

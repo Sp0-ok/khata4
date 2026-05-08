@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2,
-  Coins, Search, FileSpreadsheet, Hash, Image as ImageIcon, X,
+  Coins, Search, Hash, Image as ImageIcon, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { db, getSettings, updateSettings, ALL_CURRENCIES, calcInvoiceTotals } from "@/lib/db";
+import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
+import { downscaleImage } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -34,20 +35,6 @@ function downloadFile(name: string, mime: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function csvEscape(v: any): string {
-  if (v == null) return "";
-  const s = String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function toCSV(rows: Record<string, any>[]): string {
-  if (!rows.length) return "";
-  const headers = Object.keys(rows[0]);
-  return [
-    headers.join(","),
-    ...rows.map(r => headers.map(h => csvEscape(r[h])).join(",")),
-  ].join("\n");
-}
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), []);
@@ -103,63 +90,6 @@ function SettingsPage() {
     }
   };
 
-  const onExportCSV = async (kind: "transactions" | "invoices" | "expenses" | "parties") => {
-    try {
-      let rows: any[] = [];
-      if (kind === "transactions") {
-        const [parties, txns] = await Promise.all([db.parties.toArray(), db.transactions.toArray()]);
-        const pmap = new Map(parties.map(p => [p.id, p.name]));
-        rows = txns.map(t => ({
-          date: new Date(t.date).toISOString().slice(0, 10),
-          party: pmap.get(t.partyId) || "",
-          type: t.type,
-          amount: t.amount,
-          method: t.method,
-          note: t.note || "",
-        }));
-      } else if (kind === "invoices") {
-        const invs = await db.invoices.toArray();
-        rows = invs.map(i => {
-          const t = calcInvoiceTotals(i);
-          return {
-            number: i.number,
-            date: new Date(i.date).toISOString().slice(0, 10),
-            customer: i.partyName,
-            items: i.items.length,
-            subtotal: t.subtotal,
-            discount: i.discount,
-            tax: t.tax,
-            total: t.total,
-            paid: i.paidAmount,
-            due: Math.max(0, t.total - i.paidAmount),
-            status: i.status,
-          };
-        });
-      } else if (kind === "expenses") {
-        const exps = await db.expenses.toArray();
-        rows = exps.map(e => ({
-          date: new Date(e.date).toISOString().slice(0, 10),
-          title: e.title,
-          category: e.category,
-          vendor: e.vendor || "",
-          method: e.method,
-          amount: e.amount,
-          notes: e.notes || "",
-        }));
-      } else {
-        const parties = await db.parties.toArray();
-        rows = parties.map(p => ({
-          name: p.name, type: p.type, phone: p.phone || "",
-          email: p.email || "", address: p.address || "", openingBalance: p.openingBalance,
-        }));
-      }
-      if (!rows.length) return toast.info("Nothing to export");
-      downloadFile(`${kind}-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv", toCSV(rows));
-      toast.success(`${rows.length} rows exported`);
-    } catch (e: any) {
-      toast.error(e.message || "Export failed");
-    }
-  };
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -383,20 +313,6 @@ function SettingsPage() {
             <input type="file" accept="application/json,.json" hidden onChange={onImport} disabled={busy} />
           </label>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("transactions")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Txns CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("invoices")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Invoices CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("expenses")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Expenses CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("parties")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Parties CSV
-            </Button>
-          </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -427,24 +343,3 @@ function SettingsPage() {
   );
 }
 
-async function downscaleImage(file: File, maxSize: number): Promise<string> {
-  const dataUrl = await new Promise<string>((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result));
-    r.onerror = () => rej(new Error("Read failed"));
-    r.readAsDataURL(file);
-  });
-  const img = await new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = () => rej(new Error("Invalid image"));
-    i.src = dataUrl;
-  });
-  const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
-  const w = Math.round(img.width * ratio);
-  const h = Math.round(img.height * ratio);
-  const c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  c.getContext("2d")!.drawImage(img, 0, 0, w, h);
-  return c.toDataURL("image/png");
-}

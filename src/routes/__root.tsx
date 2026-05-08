@@ -54,7 +54,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Hisaab Kitaab — Digital Khata for Small Business" },
       { name: "description", content: "Free offline Digital Khata, ledger and bookkeeping app. No ads, no subscriptions, no tracking." },
       { property: "og:title", content: "Hisaab Kitaab — Digital Khata" },
-      { property: "og:description", content: "Replace your physical bahi-khata. Track customers, payments and balances offline." },
+      { property: "og:description", content: "Replace your physical bahi-khata. Track parties, payments and balances offline." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

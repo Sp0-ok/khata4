@@ -28,7 +28,7 @@ function NewInvoice() {
   const { id: editId } = useSearch({ from: "/invoices/new" });
   const isEdit = editId != null;
   const { symbol, format } = useCurrency();
-  const parties = useLiveQuery(() => db.parties.where("type").equals("customer").toArray(), []);
+  const parties = useLiveQuery(() => db.parties.toArray(), []);
 
   const [number, setNumber] = useState("");
   const [partyId, setPartyId] = useState<string>("");
@@ -83,7 +83,7 @@ function NewInvoice() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partyName.trim()) return toast.error("Select or enter a customer");
+    if (!partyName.trim()) return toast.error("Select or enter a party");
     const cleanItems = items.filter(i => i.name.trim() && i.qty > 0 && i.price >= 0);
     if (!cleanItems.length) return toast.error("Add at least one item");
 
@@ -147,10 +147,10 @@ function NewInvoice() {
           </Field>
         </div>
 
-        <Field label="Customer">
+        <Field label="Party">
           {parties && parties.length > 0 ? (
             <Select value={partyId} onValueChange={onPartyChange}>
-              <SelectTrigger><SelectValue placeholder="Choose existing customer" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Choose existing party" /></SelectTrigger>
               <SelectContent>
                 {parties.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
               </SelectContent>

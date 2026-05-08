@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, type TxnType } from "@/lib/db";
 import { Avatar } from "@/routes/customers.index";
+import { tapLight } from "@/lib/haptics";
 
 export function PartyPickerSheet({
   trigger,
@@ -31,6 +32,7 @@ export function PartyPickerSheet({
   );
 
   const pick = (id: number) => {
+    tapLight();
     setOpen(false);
     nav({ to: "/customers/$id/add", params: { id: String(id) }, search: { type: txnType } });
   };

@@ -188,7 +188,7 @@ function Reports() {
                   <li key={party.id} className="flex items-center justify-between rounded-xl bg-muted/40 p-3">
                     <div>
                       <p className="text-sm font-medium">{party.name}</p>
-                      <p className="text-[11px] text-muted-foreground capitalize">{party.type}</p>
+                      <p className="text-[11px] text-muted-foreground">{party.phone || "Party"}</p>
                     </div>
                     <p className={`text-sm font-bold tabular ${balance > 0 ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]"}`}>
                       {format(Math.abs(balance))}

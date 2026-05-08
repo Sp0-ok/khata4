@@ -51,7 +51,7 @@ function ExpensesList() {
 
   return (
     <AppShell>
-      <PageHeader title="Expenses" subtitle="Track every rupee you spend" />
+      <PageHeader title="Expenses" subtitle="Track every business expense" />
 
       <div className="space-y-3 px-4 pt-4">
         <div className="grid grid-cols-2 gap-2">

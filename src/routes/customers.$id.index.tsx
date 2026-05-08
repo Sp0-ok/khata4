@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useRef, useState } from "react";
 import {
   ArrowDownLeft, ArrowUpRight, ChevronLeft, FileText, MessageCircle, MoreVertical,
-  Phone, Trash2,
+  Phone, Trash2, Pencil, Upload,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -10,7 +11,7 @@ import { AppShell, PageHeader } from "@/components/AppShell";
 import { Avatar } from "./customers.index";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { db, getPartyBalance, getSettings } from "@/lib/db";
+import { db, getPartyBalance, getSettings, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { downloadStatement, shareWhatsApp } from "@/lib/pdf";
 import { cn } from "@/lib/utils";
@@ -33,9 +34,10 @@ function CustomerDetail() {
   const pid = Number(id);
   const navigate = useNavigate();
   const { format, symbol } = useCurrency();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
-  // Newest first — sort by createdAt descending so freshly added entries appear on top.
   const txns = useLiveQuery(
     () => db.transactions.where("partyId").equals(pid).toArray()
       .then(arr => arr.sort((a, b) => b.createdAt - a.createdAt)),
@@ -63,13 +65,58 @@ function CustomerDetail() {
     } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
-  const onDelete = async () => {
+  const onDeleteParty = async () => {
     await db.transaction("rw", db.parties, db.transactions, async () => {
       await db.transactions.where("partyId").equals(pid).delete();
       await db.parties.delete(pid);
     });
     toast.success("Party deleted");
     navigate({ to: "/customers" });
+  };
+
+  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    try {
+      const text = await f.text();
+      let rows: any[] = [];
+      if (f.name.toLowerCase().endsWith(".json")) {
+        const parsed = JSON.parse(text);
+        rows = Array.isArray(parsed) ? parsed : (parsed.transactions || []);
+      } else {
+        // CSV: date,type,amount,method,note
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        const header = lines.shift()?.toLowerCase().split(",").map(h => h.trim()) || [];
+        rows = lines.map(line => {
+          const cells = parseCSVLine(line);
+          const obj: any = {};
+          header.forEach((h, i) => obj[h] = cells[i]);
+          return obj;
+        });
+      }
+      const now = Date.now();
+      const cleaned = rows.map((r, i) => {
+        const t = String(r.type || "").toLowerCase();
+        const type: TxnType = t === "credit" || t === "got" || t === "received" ? "credit" : "debit";
+        const amount = parseFloat(r.amount);
+        if (!amount || amount <= 0) throw new Error(`Row ${i + 1}: invalid amount`);
+        return {
+          partyId: pid, type, amount,
+          note: r.note ? String(r.note) : undefined,
+          method: ((["cash","bank","easypaisa","jazzcash","card","cheque","other"] as PaymentMethod[])
+            .includes(String(r.method).toLowerCase() as PaymentMethod)
+            ? String(r.method).toLowerCase() : "cash") as PaymentMethod,
+          date: r.date ? new Date(r.date).getTime() : now,
+          createdAt: now + i,
+        };
+      });
+      await db.transactions.bulkAdd(cleaned);
+      await db.parties.update(pid, { updatedAt: Date.now() });
+      toast.success(`Imported ${cleaned.length} transactions`);
+    } catch (err: any) {
+      toast.error(err.message || "Import failed");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   return (
@@ -84,13 +131,14 @@ function CustomerDetail() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onDownloadPDF}><FileText className="mr-2 h-4 w-4" /> Download statement</DropdownMenuItem>
               <DropdownMenuItem onClick={onShareReminder}><MessageCircle className="mr-2 h-4 w-4" /> WhatsApp reminder</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Import transactions</DropdownMenuItem>
               {party.phone && (
                 <DropdownMenuItem asChild><a href={`tel:${party.phone}`}><Phone className="mr-2 h-4 w-4" /> Call</a></DropdownMenuItem>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem className="text-destructive" onSelect={e => e.preventDefault()}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete party
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -102,7 +150,7 @@ function CustomerDetail() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={onDeleteParty}>Delete</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -110,6 +158,8 @@ function CustomerDetail() {
           </DropdownMenu>
         }
       />
+
+      <input ref={fileRef} type="file" accept=".csv,.json,application/json,text/csv" hidden onChange={onImport} />
 
       <section className="px-4 pt-4">
         <motion.div
@@ -167,18 +217,42 @@ function CustomerDetail() {
                 <p className={cn("text-sm font-bold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
                   {format(t.amount)}
                 </p>
-                <button
-                  className="text-[10px] text-muted-foreground hover:text-destructive"
-                  onClick={async () => {
-                    await db.transactions.delete(t.id!);
-                    toast.success("Transaction deleted");
-                  }}
-                >Delete</button>
+                <div className="mt-1 flex items-center justify-end gap-1">
+                  <button
+                    aria-label="Edit"
+                    onClick={() => navigate({ to: "/customers/$id/edit/$txnId", params: { id, txnId: String(t.id) } })}
+                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ><Pencil className="h-3.5 w-3.5" /></button>
+                  <button
+                    aria-label="Delete"
+                    onClick={() => setPendingDelete(t.id!)}
+                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  ><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       </section>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={o => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this transaction?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (pendingDelete != null) {
+                await db.transactions.delete(pendingDelete);
+                toast.success("Transaction deleted");
+              }
+              setPendingDelete(null);
+            }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="sticky bottom-0 mt-6 grid grid-cols-2 gap-2 border-t border-border bg-card/95 px-4 py-3 backdrop-blur safe-bottom">
         <Button
@@ -198,4 +272,23 @@ function CustomerDetail() {
       </div>
     </AppShell>
   );
+}
+
+function parseCSVLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === ',') { out.push(cur); cur = ""; }
+      else if (ch === '"') inQ = true;
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
 }

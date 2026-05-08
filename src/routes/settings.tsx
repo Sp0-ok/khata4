@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, Download, Moon, Sun, Trash2, Upload, Monitor, Building2,
-  Coins, Search, FileSpreadsheet, Hash,
+  Coins, Search, FileSpreadsheet, Hash, Image as ImageIcon, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
@@ -54,6 +54,19 @@ function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [busy, setBusy] = useState(false);
   const [curQ, setCurQ] = useState("");
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { toast.error("Image too large (max 2MB)"); e.target.value = ""; return; }
+    try {
+      const dataUrl = await downscaleImage(f, 256);
+      await updateSettings({ logo: dataUrl });
+      toast.success("Logo updated");
+    } catch (err: any) {
+      toast.error(err.message || "Could not load image");
+    } finally { e.target.value = ""; }
+  };
 
   const filteredCurrencies = useMemo(() => {
     const q = curQ.trim().toLowerCase();
@@ -201,6 +214,29 @@ function SettingsPage() {
       <div className="space-y-4 px-4 pt-4">
         <Card className="space-y-3 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-sm font-semibold"><Building2 className="h-4 w-4 text-primary" /> Business</div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted">
+              {settings.logo ? (
+                <img src={settings.logo} alt="Logo" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => logoRef.current?.click()}>
+                <Upload className="mr-1.5 h-3.5 w-3.5" /> {settings.logo ? "Replace logo" : "Upload logo"}
+              </Button>
+              {settings.logo && (
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
+                  onClick={() => updateSettings({ logo: undefined })}>
+                  <X className="mr-1 h-3 w-3" /> Remove
+                </Button>
+              )}
+              <input ref={logoRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs">Business name</Label>
             <Input defaultValue={settings.businessName}
@@ -352,4 +388,26 @@ function SettingsPage() {
       </div>
     </AppShell>
   );
+}
+
+async function downscaleImage(file: File, maxSize: number): Promise<string> {
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(new Error("Read failed"));
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("Invalid image"));
+    i.src = dataUrl;
+  });
+  const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
+  const w = Math.round(img.width * ratio);
+  const h = Math.round(img.height * ratio);
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+  return c.toDataURL("image/png");
 }

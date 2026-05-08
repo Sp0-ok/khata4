@@ -168,6 +168,14 @@
     overscroll-behavior-y: none;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+
+  /* Hide number-input spin buttons globally */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 
 @layer utilities {

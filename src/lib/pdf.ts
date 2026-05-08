@@ -1,6 +1,12 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
+import { saveFile } from "./native-download";
+
+async function savePdf(doc: jsPDF, filename: string): Promise<{ path?: string }> {
+  const blob = doc.output("blob");
+  return saveFile(filename, blob, "application/pdf");
+}
 
 const TEAL: [number, number, number] = [13, 148, 136];
 const RED: [number, number, number] = [220, 38, 38];
@@ -170,7 +176,7 @@ export async function generateStatementPDF(party: Party, businessName: string, c
 
 export async function downloadStatement(party: Party, businessName: string, symbol: string) {
   const doc = await generateStatementPDF(party, businessName, symbol);
-  doc.save(`${party.name.replace(/\s+/g, "_")}_statement.pdf`);
+  return savePdf(doc, `${party.name.replace(/\s+/g, "_")}_statement.pdf`);
 }
 
 export async function generateInvoicePDF(inv: Invoice) {
@@ -270,7 +276,7 @@ export async function generateInvoicePDF(inv: Invoice) {
 
 export async function downloadInvoice(inv: Invoice) {
   const doc = await generateInvoicePDF(inv);
-  doc.save(`${inv.number}.pdf`);
+  return savePdf(doc, `${inv.number}.pdf`);
 }
 
 export function shareWhatsApp(phone: string | undefined, text: string) {

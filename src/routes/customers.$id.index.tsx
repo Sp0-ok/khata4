@@ -135,6 +135,7 @@ function CustomerDetail() {
               <DropdownMenuItem onClick={onDownloadPDF}><FileText className="mr-2 h-4 w-4" /> Download statement</DropdownMenuItem>
               <DropdownMenuItem onClick={onShareReminder}><MessageCircle className="mr-2 h-4 w-4" /> WhatsApp reminder</DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Import transactions</DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportTxns}><Download className="mr-2 h-4 w-4" /> Export transactions</DropdownMenuItem>
               {party.phone && (
                 <DropdownMenuItem asChild><a href={`tel:${party.phone}`}><Phone className="mr-2 h-4 w-4" /> Call</a></DropdownMenuItem>
               )}

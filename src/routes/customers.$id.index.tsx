@@ -123,12 +123,15 @@ function CustomerDetail() {
     <AppShell hideNav>
       <PageHeader
         title={party.name}
-        subtitle={party.type === "customer" ? "Customer" : "Supplier"}
+        subtitle={party.phone || "Party"}
         back={<Link to="/customers" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
         right={
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-accent"><MoreVertical className="h-5 w-5" /></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate({ to: "/customers/$id/edit", params: { id } })}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit party
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onDownloadPDF}><FileText className="mr-2 h-4 w-4" /> Download statement</DropdownMenuItem>
               <DropdownMenuItem onClick={onShareReminder}><MessageCircle className="mr-2 h-4 w-4" /> WhatsApp reminder</DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Import transactions</DropdownMenuItem>

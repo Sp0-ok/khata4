@@ -227,39 +227,50 @@ function CustomerDetail() {
               No transactions yet. Add the first one below.
             </Card>
           )}
-          {txns?.map(t => (
-            <Card key={t.id} className="flex items-center gap-3 p-3">
-              <div className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full",
-                t.type === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
-              )}>
-                {t.type === "credit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {new Date(t.date).toLocaleDateString()} · {t.method}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className={cn("text-sm font-bold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
-                  {format(t.amount)}
-                </p>
-                <div className="mt-1 flex items-center justify-end gap-1">
-                  <button
-                    aria-label="Edit"
-                    onClick={() => navigate({ to: "/customers/$id/edit/$txnId", params: { id, txnId: String(t.id) } })}
-                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  ><Pencil className="h-3.5 w-3.5" /></button>
-                  <button
-                    aria-label="Delete"
-                    onClick={() => setPendingDelete(t.id!)}
-                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  ><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </div>
-            </Card>
-          ))}
+          <AnimatePresence initial={false}>
+            {txns?.map(t => (
+              <motion.div
+                key={t.id}
+                layout
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ type: "spring", stiffness: 380, damping: 28 }}
+              >
+                <Card className="flex items-center gap-3 p-3">
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full",
+                    t.type === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
+                  )}>
+                    {t.type === "credit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
+                    <p className="text-[11px] text-muted-foreground capitalize">
+                      {new Date(t.date).toLocaleDateString()} · {t.method}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn("text-sm font-bold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
+                      {format(t.amount)}
+                    </p>
+                    <div className="mt-1 flex items-center justify-end gap-1">
+                      <button
+                        aria-label="Edit"
+                        onClick={() => navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } })}
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      ><Pencil className="h-3.5 w-3.5" /></button>
+                      <button
+                        aria-label="Delete"
+                        onClick={() => setPendingDelete(t.id!)}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      ><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </section>
 

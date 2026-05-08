@@ -158,7 +158,8 @@ export const getPartyBalance = async (partyId: number): Promise<number> => {
   const party = await db.parties.get(partyId);
   if (!party) return 0;
   const txns = await db.transactions.where("partyId").equals(partyId).toArray();
-  const sum = txns.reduce((acc, t) => acc + (t.type === "credit" ? t.amount : -t.amount), 0);
+  // Khata convention: "You gave" (debit) → party owes you (+); "You got" (credit) → reduces what they owe (−).
+  const sum = txns.reduce((acc, t) => acc + (t.type === "debit" ? t.amount : -t.amount), 0);
   return (party.openingBalance || 0) + sum;
 };
 
@@ -168,7 +169,7 @@ export const getAllBalances = async () => {
   const map = new Map<number, number>();
   for (const p of parties) map.set(p.id!, p.openingBalance || 0);
   for (const t of txns) {
-    map.set(t.partyId, (map.get(t.partyId) || 0) + (t.type === "credit" ? t.amount : -t.amount));
+    map.set(t.partyId, (map.get(t.partyId) || 0) + (t.type === "debit" ? t.amount : -t.amount));
   }
   return parties.map(p => ({ party: p, balance: map.get(p.id!) || 0 }));
 };

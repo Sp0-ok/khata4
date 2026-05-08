@@ -31,7 +31,7 @@ export async function generateStatementPDF(party: Party, businessName: string, c
   const rows = [
     ["Opening", "—", "—", "—", formatMoney(running, currencySymbol)],
     ...txns.map(t => {
-      running += t.type === "credit" ? t.amount : -t.amount;
+      running += t.type === "debit" ? t.amount : -t.amount;
       return [
         new Date(t.date).toLocaleDateString(),
         t.note || (t.type === "credit" ? "Received" : "Given"),

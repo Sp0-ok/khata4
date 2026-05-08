@@ -87,12 +87,17 @@ export async function generateStatementPDF(party: Party, businessName: string, c
     doc.text(subLines, x + 2, cardY + 19);
   });
 
-  // Entries count + opening balance line (above table, NOT inside body)
-  let y = cardY + cardH + 8;
+  // Entries count (above table)
+  let y = cardY + cardH + 10;
   doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(20);
   doc.text(`No. of Entries: ${txns.length}`, margin, y);
-  doc.setFont("helvetica", "normal"); doc.setTextColor(...MUTED);
-  doc.text(`Opening balance: ${formatMoney(Math.abs(opening), currencySymbol)} (${fmtDate(firstDate)})`, w - margin, y, { align: "right" });
+
+  const fmtDateTime = (ts: number) => {
+    const d = new Date(ts);
+    const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return `${date}\n${time}`;
+  };
 
   // Table
   let running = opening;
@@ -101,8 +106,8 @@ export async function generateStatementPDF(party: Party, businessName: string, c
     const balanceTxt = formatMoney(Math.abs(running), currencySymbol);
     return [
       { content: String(idx + 1), styles: { halign: "center" } },
-      { content: fmtDate(t.date), styles: { fontStyle: "bold", textColor: 20 } },
-      { content: t.note || (t.type === "credit" ? "Received" : "Given"), styles: { fontStyle: "bold", textColor: 20 } },
+      { content: fmtDateTime(t.date), styles: { textColor: 60, fontSize: 8 } },
+      { content: t.note || (t.type === "credit" ? "Received" : "Given"), styles: { textColor: 30 } },
       {
         content: t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "",
         styles: { fillColor: t.type === "debit" ? RED_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
@@ -122,11 +127,13 @@ export async function generateStatementPDF(party: Party, businessName: string, c
     startY: y + 4,
     head: [["#", "Date", "Details", "Debit (-)", "Credit (+)", "Balance"]],
     body,
+    showFoot: "lastPage",
     headStyles: { fillColor: [241, 245, 249], textColor: 60, fontSize: 9, fontStyle: "bold", lineColor: [220, 220, 220], lineWidth: 0.2 },
     bodyStyles: { fontSize: 9, lineColor: [230, 230, 230], lineWidth: 0.2, cellPadding: 3 },
+    footStyles: { fillColor: [255, 255, 255], textColor: 20, fontStyle: "bold", fontSize: 11, cellPadding: 5, lineColor: [180, 180, 180], lineWidth: 0 },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 22 },
+      1: { cellWidth: 24 },
       2: { cellWidth: "auto" },
       3: { halign: "right" },
       4: { halign: "right" },
@@ -135,11 +142,25 @@ export async function generateStatementPDF(party: Party, businessName: string, c
     margin: { left: margin, right: margin },
     theme: "grid",
     foot: [[
-      { content: "GRAND TOTAL", colSpan: 3, styles: { halign: "left", fontStyle: "bold", fillColor: TOTAL_BG, textColor: 255, fontSize: 11, cellPadding: 4 } },
-      { content: formatMoney(totalDebit, currencySymbol), styles: { halign: "right", fontStyle: "bold", fillColor: TOTAL_BG, textColor: 255, fontSize: 11, cellPadding: 4 } },
-      { content: formatMoney(totalCredit, currencySymbol), styles: { halign: "right", fontStyle: "bold", fillColor: TOTAL_BG, textColor: 255, fontSize: 11, cellPadding: 4 } },
-      { content: formatMoney(Math.abs(net), currencySymbol), styles: { halign: "right", fontStyle: "bold", fillColor: TOTAL_BG, textColor: 255, fontSize: 11, cellPadding: 4 } },
+      { content: "GRAND TOTAL", colSpan: 3, styles: { halign: "left" } },
+      { content: formatMoney(totalDebit, currencySymbol), styles: { halign: "right", textColor: RED } },
+      { content: formatMoney(totalCredit, currencySymbol), styles: { halign: "right", textColor: GREEN } },
+      { content: formatMoney(Math.abs(net), currencySymbol), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
     ]],
+    didDrawCell: (data) => {
+      // Draw a thick top border on the foot row to visually separate it.
+      if (data.section === "foot" && data.row.index === 0 && data.column.index === 0) {
+        const { table } = data;
+        const x1 = data.cell.x;
+        const x2 = table.settings.margin.right
+          ? doc.internal.pageSize.getWidth() - table.settings.margin.right
+          : x1 + table.getWidth(doc.internal.pageSize.getWidth());
+        const yy = data.cell.y;
+        doc.setDrawColor(40);
+        doc.setLineWidth(0.6);
+        doc.line(x1, yy, x2, yy);
+      }
+    },
   });
 
   // Footer (no app watermark)

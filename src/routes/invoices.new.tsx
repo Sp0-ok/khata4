@@ -133,7 +133,7 @@ function NewInvoice() {
   return (
     <AppShell hideNav>
       <PageHeader
-        title="New invoice"
+        title={isEdit ? "Edit invoice" : "New invoice"}
         back={<Link to="/invoices" className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
 

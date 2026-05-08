@@ -11,6 +11,7 @@ import {
   PieChart, Pie, Cell, Legend, LineChart, Line, Area, AreaChart,
 } from "recharts";
 import { BarChart3, LineChart as LineIcon } from "lucide-react";
+import { tapLight } from "@/lib/haptics";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — Hisaab Kitaab" }] }),
@@ -102,7 +103,7 @@ function Reports() {
       <PageHeader title="Reports" subtitle={view === "parties" ? "Receivables & payables" : "Invoices & expenses"} />
 
       <div className="space-y-3 px-4 pt-4">
-        <Tabs value={view} onValueChange={v => setView(v as any)}>
+        <Tabs value={view} onValueChange={v => { tapLight(); setView(v as any); }}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="parties">Parties</TabsTrigger>
             <TabsTrigger value="business">Business</TabsTrigger>
@@ -113,7 +114,7 @@ function Reports() {
           {(Object.keys(PERIOD_LABEL) as Period[]).map(p => (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => { tapLight(); setPeriod(p); }}
               className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
                 period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
@@ -123,7 +124,7 @@ function Reports() {
           ))}
         </div>
 
-        <Tabs value={chartKind} onValueChange={v => setChartKind(v as any)}>
+        <Tabs value={chartKind} onValueChange={v => { tapLight(); setChartKind(v as any); }}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="bars"><BarChart3 className="mr-1.5 h-3.5 w-3.5" /> Bars</TabsTrigger>
             <TabsTrigger value="lines"><LineIcon className="mr-1.5 h-3.5 w-3.5" /> Lines</TabsTrigger>

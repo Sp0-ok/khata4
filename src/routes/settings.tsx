@@ -313,20 +313,6 @@ function SettingsPage() {
             <input type="file" accept="application/json,.json" hidden onChange={onImport} disabled={busy} />
           </label>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("transactions")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Txns CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("invoices")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Invoices CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("expenses")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Expenses CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => onExportCSV("parties")}>
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Parties CSV
-            </Button>
-          </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>

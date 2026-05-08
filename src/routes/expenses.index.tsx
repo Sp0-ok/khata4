@@ -21,6 +21,7 @@ export const Route = createFileRoute("/expenses/")({
 
 function ExpensesList() {
   const { format } = useCurrency();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
   const expenses = useLiveQuery(

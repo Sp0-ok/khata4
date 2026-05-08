@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
+import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/customers/$id/add")({
   validateSearch: (s: Record<string, unknown>) => ({
     type: (s.type as TxnType) || "credit",
   }),
-  head: () => ({ meta: [{ title: "Add transaction — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Add transaction — Hisaab Kitaab" }] }),
   component: AddTxn,
 });
 
@@ -27,6 +28,7 @@ function AddTxn() {
   const { id } = Route.useParams();
   const { type } = useSearch({ from: "/customers/$id/add" });
   const navigate = useNavigate();
+  const { symbol } = useCurrency();
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -81,7 +83,7 @@ function AddTxn() {
         >
           <p className="text-xs uppercase tracking-widest opacity-90">Amount</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold opacity-90">Rs</span>
+            <span className="text-2xl font-semibold opacity-90">{symbol}</span>
             <input
               autoFocus type="number" inputMode="decimal" step="0.01" min="0"
               value={amount} onChange={e => setAmount(e.target.value)}

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/customers/new")({
   validateSearch: (s: Record<string, unknown>) => ({
     type: (s.type as PartyType) || "customer",
   }),
-  head: () => ({ meta: [{ title: "Add party — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Add party — Hisaab Kitaab" }] }),
   component: NewParty,
 });
 

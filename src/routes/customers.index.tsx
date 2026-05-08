@@ -12,7 +12,7 @@ import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/customers/")({
-  head: () => ({ meta: [{ title: "Parties — BahiBook" }] }),
+  head: () => ({ meta: [{ title: "Parties — Hisaab Kitaab" }] }),
   component: CustomersList,
 });
 

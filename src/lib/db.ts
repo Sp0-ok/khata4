@@ -81,6 +81,7 @@ export interface Settings {
   pinHash?: string;
   onboarded: boolean;
   logo?: string;
+  invoiceWatermark?: boolean;
 }
 
 class LedgerDB extends Dexie {

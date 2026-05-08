@@ -74,7 +74,10 @@ function Dashboard() {
           onTouchStart={startHold}
           onTouchEnd={cancelHold}
           onTouchCancel={cancelHold}
+          onTouchMove={cancelHold}
+          onContextMenu={(e) => e.preventDefault()}
           onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
+          style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", touchAction: "manipulation" }}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />

@@ -226,7 +226,7 @@ function NewInvoice() {
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">
           <Button type="submit" disabled={saving} className="h-12 w-full text-base font-semibold">
-            {saving ? "Saving…" : "Create invoice"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Create invoice"}
           </Button>
         </div>
       </form>

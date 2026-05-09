@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Light, non-DayNight base. Capacitor controls dark mode inside the WebView via CSS. -->
+    <!-- Light, non-DayNight base. The React app controls dark mode via CSS. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
     </style>

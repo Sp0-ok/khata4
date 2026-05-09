@@ -9,245 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
-import { Route as ExpensesIndexRouteImport } from './routes/expenses.index'
-import { Route as CustomersIndexRouteImport } from './routes/customers.index'
-import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
-import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
-import { Route as ExpensesNewRouteImport } from './routes/expenses.new'
-import { Route as CustomersNewRouteImport } from './routes/customers.new'
-import { Route as CustomersIdIndexRouteImport } from './routes/customers.$id.index'
-import { Route as CustomersIdEditRouteImport } from './routes/customers.$id.edit'
-import { Route as CustomersIdAddRouteImport } from './routes/customers.$id.add'
-import { Route as CustomersIdTxnTxnIdRouteImport } from './routes/customers.$id.txn.$txnId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
-  id: '/invoices/',
-  path: '/invoices/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensesIndexRoute = ExpensesIndexRouteImport.update({
-  id: '/expenses/',
-  path: '/expenses/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersIndexRoute = CustomersIndexRouteImport.update({
-  id: '/customers/',
-  path: '/customers/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvoicesNewRoute = InvoicesNewRouteImport.update({
-  id: '/invoices/new',
-  path: '/invoices/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvoicesIdRoute = InvoicesIdRouteImport.update({
-  id: '/invoices/$id',
-  path: '/invoices/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensesNewRoute = ExpensesNewRouteImport.update({
-  id: '/expenses/new',
-  path: '/expenses/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersNewRoute = CustomersNewRouteImport.update({
-  id: '/customers/new',
-  path: '/customers/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersIdIndexRoute = CustomersIdIndexRouteImport.update({
-  id: '/customers/$id/',
-  path: '/customers/$id/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersIdEditRoute = CustomersIdEditRouteImport.update({
-  id: '/customers/$id/edit',
-  path: '/customers/$id/edit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersIdAddRoute = CustomersIdAddRouteImport.update({
-  id: '/customers/$id/add',
-  path: '/customers/$id/add',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersIdTxnTxnIdRoute = CustomersIdTxnTxnIdRouteImport.update({
-  id: '/customers/$id/txn/$txnId',
-  path: '/customers/$id/txn/$txnId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
-  '/customers/new': typeof CustomersNewRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/invoices/$id': typeof InvoicesIdRoute
-  '/invoices/new': typeof InvoicesNewRoute
-  '/customers/': typeof CustomersIndexRoute
-  '/expenses/': typeof ExpensesIndexRoute
-  '/invoices/': typeof InvoicesIndexRoute
-  '/customers/$id/add': typeof CustomersIdAddRoute
-  '/customers/$id/edit': typeof CustomersIdEditRoute
-  '/customers/$id/': typeof CustomersIdIndexRoute
-  '/customers/$id/txn/$txnId': typeof CustomersIdTxnTxnIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
-  '/customers/new': typeof CustomersNewRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/invoices/$id': typeof InvoicesIdRoute
-  '/invoices/new': typeof InvoicesNewRoute
-  '/customers': typeof CustomersIndexRoute
-  '/expenses': typeof ExpensesIndexRoute
-  '/invoices': typeof InvoicesIndexRoute
-  '/customers/$id/add': typeof CustomersIdAddRoute
-  '/customers/$id/edit': typeof CustomersIdEditRoute
-  '/customers/$id': typeof CustomersIdIndexRoute
-  '/customers/$id/txn/$txnId': typeof CustomersIdTxnTxnIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
-  '/customers/new': typeof CustomersNewRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/invoices/$id': typeof InvoicesIdRoute
-  '/invoices/new': typeof InvoicesNewRoute
-  '/customers/': typeof CustomersIndexRoute
-  '/expenses/': typeof ExpensesIndexRoute
-  '/invoices/': typeof InvoicesIndexRoute
-  '/customers/$id/add': typeof CustomersIdAddRoute
-  '/customers/$id/edit': typeof CustomersIdEditRoute
-  '/customers/$id/': typeof CustomersIdIndexRoute
-  '/customers/$id/txn/$txnId': typeof CustomersIdTxnTxnIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/onboarding'
-    | '/reports'
-    | '/settings'
-    | '/customers/new'
-    | '/expenses/new'
-    | '/invoices/$id'
-    | '/invoices/new'
-    | '/customers/'
-    | '/expenses/'
-    | '/invoices/'
-    | '/customers/$id/add'
-    | '/customers/$id/edit'
-    | '/customers/$id/'
-    | '/customers/$id/txn/$txnId'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/onboarding'
-    | '/reports'
-    | '/settings'
-    | '/customers/new'
-    | '/expenses/new'
-    | '/invoices/$id'
-    | '/invoices/new'
-    | '/customers'
-    | '/expenses'
-    | '/invoices'
-    | '/customers/$id/add'
-    | '/customers/$id/edit'
-    | '/customers/$id'
-    | '/customers/$id/txn/$txnId'
-  id:
-    | '__root__'
-    | '/'
-    | '/onboarding'
-    | '/reports'
-    | '/settings'
-    | '/customers/new'
-    | '/expenses/new'
-    | '/invoices/$id'
-    | '/invoices/new'
-    | '/customers/'
-    | '/expenses/'
-    | '/invoices/'
-    | '/customers/$id/add'
-    | '/customers/$id/edit'
-    | '/customers/$id/'
-    | '/customers/$id/txn/$txnId'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  OnboardingRoute: typeof OnboardingRoute
-  ReportsRoute: typeof ReportsRoute
-  SettingsRoute: typeof SettingsRoute
-  CustomersNewRoute: typeof CustomersNewRoute
-  ExpensesNewRoute: typeof ExpensesNewRoute
-  InvoicesIdRoute: typeof InvoicesIdRoute
-  InvoicesNewRoute: typeof InvoicesNewRoute
-  CustomersIndexRoute: typeof CustomersIndexRoute
-  ExpensesIndexRoute: typeof ExpensesIndexRoute
-  InvoicesIndexRoute: typeof InvoicesIndexRoute
-  CustomersIdAddRoute: typeof CustomersIdAddRoute
-  CustomersIdEditRoute: typeof CustomersIdEditRoute
-  CustomersIdIndexRoute: typeof CustomersIdIndexRoute
-  CustomersIdTxnTxnIdRoute: typeof CustomersIdTxnTxnIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -255,102 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/': {
-      id: '/invoices/'
-      path: '/invoices'
-      fullPath: '/invoices/'
-      preLoaderRoute: typeof InvoicesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/expenses/': {
-      id: '/expenses/'
-      path: '/expenses'
-      fullPath: '/expenses/'
-      preLoaderRoute: typeof ExpensesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/': {
-      id: '/customers/'
-      path: '/customers'
-      fullPath: '/customers/'
-      preLoaderRoute: typeof CustomersIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invoices/new': {
-      id: '/invoices/new'
-      path: '/invoices/new'
-      fullPath: '/invoices/new'
-      preLoaderRoute: typeof InvoicesNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invoices/$id': {
-      id: '/invoices/$id'
-      path: '/invoices/$id'
-      fullPath: '/invoices/$id'
-      preLoaderRoute: typeof InvoicesIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/expenses/new': {
-      id: '/expenses/new'
-      path: '/expenses/new'
-      fullPath: '/expenses/new'
-      preLoaderRoute: typeof ExpensesNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/new': {
-      id: '/customers/new'
-      path: '/customers/new'
-      fullPath: '/customers/new'
-      preLoaderRoute: typeof CustomersNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/$id/': {
-      id: '/customers/$id/'
-      path: '/customers/$id'
-      fullPath: '/customers/$id/'
-      preLoaderRoute: typeof CustomersIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/$id/edit': {
-      id: '/customers/$id/edit'
-      path: '/customers/$id/edit'
-      fullPath: '/customers/$id/edit'
-      preLoaderRoute: typeof CustomersIdEditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/$id/add': {
-      id: '/customers/$id/add'
-      path: '/customers/$id/add'
-      fullPath: '/customers/$id/add'
-      preLoaderRoute: typeof CustomersIdAddRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers/$id/txn/$txnId': {
-      id: '/customers/$id/txn/$txnId'
-      path: '/customers/$id/txn/$txnId'
-      fullPath: '/customers/$id/txn/$txnId'
-      preLoaderRoute: typeof CustomersIdTxnTxnIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  OnboardingRoute: OnboardingRoute,
-  ReportsRoute: ReportsRoute,
-  SettingsRoute: SettingsRoute,
-  CustomersNewRoute: CustomersNewRoute,
-  ExpensesNewRoute: ExpensesNewRoute,
-  InvoicesIdRoute: InvoicesIdRoute,
-  InvoicesNewRoute: InvoicesNewRoute,
-  CustomersIndexRoute: CustomersIndexRoute,
-  ExpensesIndexRoute: ExpensesIndexRoute,
-  InvoicesIndexRoute: InvoicesIndexRoute,
-  CustomersIdAddRoute: CustomersIdAddRoute,
-  CustomersIdEditRoute: CustomersIdEditRoute,
-  CustomersIdIndexRoute: CustomersIdIndexRoute,
-  CustomersIdTxnTxnIdRoute: CustomersIdTxnTxnIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

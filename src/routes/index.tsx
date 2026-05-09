@@ -42,26 +42,21 @@ function Dashboard() {
   const net = receivable - payable;
 
   const [eggOpen, setEggOpen] = useState(false);
-  const [eggReady, setEggReady] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const holdFired = useRef(false);
 
   const startHold = () => {
     holdFired.current = false;
+    if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = window.setTimeout(() => {
       holdFired.current = true;
       haptic([20, 40, 80]);
       setEggOpen(true);
-      // Defer enabling the close-on-tap handler so the same pointer-up
-      // that just released the long-press doesn't immediately close it.
-      setEggReady(false);
-      window.setTimeout(() => setEggReady(true), 450);
-    }, 5000);
+    }, 2500);
   };
   const cancelHold = () => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
   };
-  const closeEgg = () => { if (eggReady) setEggOpen(false); };
 
   return (
     <AppShell>
@@ -73,24 +68,24 @@ function Dashboard() {
         <Link
           to="/settings"
           aria-label="Settings"
-          onMouseDown={startHold}
-          onMouseUp={cancelHold}
-          onMouseLeave={cancelHold}
-          onTouchStart={startHold}
-          onTouchEnd={cancelHold}
-          onTouchCancel={cancelHold}
-          onTouchMove={cancelHold}
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerCancel={cancelHold}
+          onPointerLeave={cancelHold}
           onContextMenu={(e) => e.preventDefault()}
-          onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
-          style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", touchAction: "manipulation" }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
+          onClick={(e) => {
+            if (holdFired.current) { e.preventDefault(); holdFired.current = false; return; }
+            tapLight();
+          }}
+          style={{ touchAction: "manipulation" }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />
         </Link>
       </header>
 
       {eggOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/70 px-6" onClick={closeEgg}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/70 px-6" onClick={() => setEggOpen(false)}>
           <div
             className="rounded-3xl px-8 py-7 text-center text-primary-foreground shadow-[var(--shadow-elevated)]"
             style={{ background: "var(--gradient-primary)" }}
@@ -99,7 +94,7 @@ function Dashboard() {
             <Heart className="mx-auto mb-3 h-10 w-10 fill-current" />
             <p className="text-sm uppercase tracking-[0.25em] opacity-90">Made with love</p>
             <p className="mt-1 text-2xl font-bold">by Sp0_ok</p>
-            <p className="mt-3 text-[11px] opacity-75">Tap anywhere to close</p>
+            <button onClick={() => setEggOpen(false)} className="mt-4 rounded-full bg-primary-foreground/20 px-4 py-1.5 text-xs font-semibold">Close</button>
           </div>
         </div>
       )}

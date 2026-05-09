@@ -7,7 +7,7 @@
     "dev": "vite --config vite.config.mobile.ts --host 0.0.0.0",
     "build": "npm run build:mobile",
     "build:dev": "npm run build:mobile",
-    "build:mobile": "vite build --config vite.config.mobile.ts && node -e \"require('fs').renameSync('dist-mobile/index.mobile.html','dist-mobile/index.html')\"",
+    "build:mobile": "vite build --config vite.config.mobile.ts && node -e \"const fs=require('fs');fs.renameSync('dist-mobile/index.mobile.html','dist-mobile/index.html');fs.rmSync('dist',{recursive:true,force:true});fs.cpSync('dist-mobile','dist',{recursive:true});\"",
     "android:sync": "npm run build:mobile && cap sync android",
     "android:open": "npm run android:sync && cap open android",
     "android:verify": "node scripts/verify-android-source.cjs && node scripts/verify-android-bundle.cjs",

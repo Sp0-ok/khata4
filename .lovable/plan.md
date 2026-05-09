@@ -1,58 +1,43 @@
-## What’s actually wrong
+## Problem
 
-The preview and APK are not running the same app artifact.
+`npx cap sync android` fails with:
 
-- The preview runs the normal web/dev build.
-- The APK runs the static Capacitor bundle copied into `android/app/src/main/assets/public`.
-- That copied Android asset folder is ignored by git, so a clean clone can easily build stale/missing/native assets unless `npm run android:sync` is run exactly before opening/building Android Studio.
-- The current Android HTML also references assets with root paths like `/assets/...`. That can work in hosted preview, but it is fragile inside the Android WebView asset server and can produce “doesn’t load” behavior.
-- The Android theme/layout still uses AppCompat/DayNight and `adjustPan`, which can fight WebView dark mode + keyboard resizing. That matches your symptoms: dark mode blank/load failure, freezes on text fields, and random tap crashes.
+```
+The web assets directory (./dist) must contain an index.html file.
+```
 
-Do I know what the issue is? Yes: the APK is loading a different, fragile Capacitor static bundle under an Android theme/keyboard setup that does not match the preview runtime.
+This app is built on TanStack Start with the Cloudflare Worker plugin. Its `vite build` output is an SSR bundle (server worker + client assets in `dist/client`) — there is no top-level `dist/index.html`, so Capacitor (which only ships static web assets into the Android WebView) has nothing to load.
 
-## Fix plan
+The npm warnings shown above the error are just deprecation notices from transitive dependencies — they are not failures and don't need to be fixed for the Android build to work. The only real blocker is the missing `index.html`.
 
-1. **Create one Android-safe runtime path**
-   - Keep the hosted web preview untouched.
-   - Make the mobile build produce APK-safe `index.html` with relative asset paths (`./assets/...`) instead of root `/assets/...`.
-   - Add a local “mobile preview” command so you can test the exact APK bundle in a browser before Android Studio.
+The app's data layer (Dexie/IndexedDB) is fully client-side, so the app does not need SSR on Android — a plain SPA shell is enough.
 
-2. **Stop committing/generated-stale APK web assets from misleading builds**
-   - Remove generated `dist-mobile/` and `android/app/src/main/assets/public` from source control if present.
-   - Keep them ignored.
-   - Make docs and scripts impossible to misread: every APK build must run `npm run android:sync` first.
-   - Add a verification script that checks the Android asset `index.html` exists and points to current relative JS/CSS files.
+## Plan
 
-3. **Stabilize Android WebView theme + dark mode**
-   - Change native Android activity theme to a plain light, no-actionbar, non-DayNight WebView container.
-   - Disable Android force-dark at the native theme level so the system does not invert/blank the WebView.
-   - Keep app-controlled light/dark mode inside React only.
-   - Align splash/background color with the restored non-teal app background.
+1. **Add a mobile-only static SPA build**
+   - Add a small dedicated Vite config (e.g. `vite.config.mobile.ts`) that does **not** use the TanStack Start / Cloudflare Worker plugin and instead builds a normal client-only React app.
+   - Use TanStack Router's memory/file-based routing in client-only mode, mounted from a small `src/main.mobile.tsx` entry that renders `<RouterProvider router={getRouter()} />` into `#root`.
+   - Add a static `index.mobile.html` (becomes `dist-mobile/index.html`) that loads that entry.
+   - Output to `dist-mobile/` so it doesn't collide with the Worker build in `dist/`.
 
-4. **Fix keyboard-related freezes**
-   - Replace `adjustPan` with the safer WebView keyboard behavior (`adjustResize`) and ensure the activity handles keyboard config changes cleanly.
-   - Add Android-specific CSS for `html/body/#root` using stable viewport sizing and touch handling.
-   - Remove global transition/animation-heavy behavior from basic buttons/inputs on Android where it can cause WebView jank.
+2. **Wire Capacitor to the new output**
+   - Change `capacitor.config.ts` `webDir` from `"dist"` to `"dist-mobile"`.
+   - Add npm scripts:
+     - `build:mobile` → `vite build --config vite.config.mobile.ts`
+     - `android:sync` → `npm run build:mobile && npx cap sync android`
+     - `android:open` → `npm run android:sync && npx cap open android`
+   - Update `ANDROID_BUILD.md` so the documented commands match (`npm run android:sync` instead of `npm run build && npx cap sync android`).
 
-5. **Reduce tap crash sources**
-   - Simplify native back-button behavior so it uses router history safely and does not exit unexpectedly during normal navigation.
-   - Remove fragile long-press/touch/mouse overlap on the Settings easter egg and implement it with pointer events only.
-   - Audit Settings, Reports, BottomNav, onboarding buttons, inputs, and sheet triggers for invalid nested buttons or pointer handlers that can lock touch state.
+3. **Make the existing root route SPA-safe**
+   - `src/routes/__root.tsx` currently renders the full `<html><body>` shell via `shellComponent` for SSR. For the mobile build, the static `index.html` already provides that shell, so the SPA entry will mount only `RootComponent` (which renders `<Outlet />` + providers). No edits to route files are required — only the entry chooses what to render.
+   - Verify nothing in the route tree imports server-only modules at module scope (`*.server.ts`, server functions). If any do, move those imports inside event handlers so the mobile bundle stays clean.
 
-6. **Make Android Studio build flow deterministic**
-   - Update `ANDROID_BUILD.md` with the exact clean-clone sequence:
-     - `npm install`
-     - `npm run android:sync`
-     - open Android Studio
-     - Gradle sync
-     - Build APK
-   - Add a warning that Android Studio alone will not rebuild/copy the React bundle unless `android:sync` was run first.
+4. **Validate**
+   - Run `npm run build:mobile` and confirm `dist-mobile/index.html` plus hashed JS/CSS assets exist.
+   - Run `npx cap sync android` and confirm it copies assets without the previous error.
+   - Sanity check the SPA in a browser by serving `dist-mobile/` (e.g. `npx serve dist-mobile`) so onboarding, parties, statements, and downloads all work before pushing to a device.
+   - Leave the existing web/Cloudflare build (`npm run build`) untouched so the hosted preview keeps working.
 
-7. **Validation before handing back**
-   - Run the mobile build/sync verification command.
-   - Inspect the generated Android `public/index.html` for relative assets.
-   - Confirm the native Android config files no longer use DayNight/force-dark/fragile keyboard settings.
+## Notes on the npm warnings
 
-## Expected outcome
-
-After this, the preview will still be the web app, but the APK will be built from a stable Android-specific bundle with predictable assets, dark mode controlled only by the app, and keyboard/tap handling designed for Android WebView.
+The deprecation warnings (`q`, `uuid@7`, `tar@6`, `glob@9`, `prebuild-install`, etc.) come from build-time transitive dependencies of `@capacitor/assets` and similar tooling. They do not affect the Android app at runtime and are out of scope for this fix; npm `audit` highs can be revisited separately if you want.

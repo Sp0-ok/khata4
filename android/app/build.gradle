@@ -26,9 +26,12 @@ android {
 
 repositories {
     flatDir{
-        dirs file('../capacitor-cordova-android-plugins/src/main/libs').exists()
-            ? ['../capacitor-cordova-android-plugins/src/main/libs', 'libs']
-            : ['libs']
+        def cordovaLibsDir = file('../capacitor-cordova-android-plugins/src/main/libs')
+        if (cordovaLibsDir.exists()) {
+            dirs cordovaLibsDir, 'libs'
+        } else {
+            dirs 'libs'
+        }
     }
 }
 

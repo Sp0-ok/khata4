@@ -1,53 +1,68 @@
-# Building the Android app
+# Building the Android APK (Hisaab Kitaab)
 
-The project is configured with Capacitor. The Android platform lives in `/android`
-and the uploaded icon has been baked into all density buckets and the adaptive icon.
+This is the **only** sequence that works on a fresh clone. Run it exactly.
 
-## One-time setup (on your machine)
+## Prerequisites
 
-1. Install Android Studio (includes the Android SDK and JDK 17).
-2. Clone/export this project locally.
-3. From the project root run:
+- Node.js 20+
+- Android Studio (Hedgehog or newer) with Android SDK 36 + JDK 21
+- `ANDROID_HOME` env var set
 
-   ```bash
-   npm install
-   npm run android:sync   # builds the SPA into dist-mobile/ and runs cap sync
-   ```
-
-> The Android WebView needs a plain static bundle, so we use a separate
-> `npm run build:mobile` (configured in `vite.config.mobile.ts`) that outputs
-> to `dist-mobile/index.html`. The regular `npm run build` is for the
-> Cloudflare-hosted web preview and is **not** what Capacitor consumes.
-
-## Open in Android Studio
+## Build steps (every time you pull new code)
 
 ```bash
-npm run android:open
+npm install
+npm run android:sync     # builds the SPA AND copies it into android/app/src/main/assets/public
+npm run android:verify   # sanity-checks that the bundle landed correctly
 ```
 
-Then press **Run** to install on a connected device, or **Build → Generate Signed Bundle / APK** for a release build.
+> WARNING: Android Studio alone will **not** rebuild the React bundle.
+> If you skip `npm run android:sync` after a `git pull`, the APK will run a
+> stale or missing bundle and look completely broken. Always run sync first.
 
-## Updating the icon
+Then:
 
-Replace `resources/icon.png` (1024×1024) and re-run:
+```bash
+npx cap open android
+```
+
+In Android Studio:
+
+1. Wait for **Gradle Sync** to finish.
+2. **Build → Clean Project**
+3. **Build → Rebuild Project**
+4. **Build → Build Bundle(s) / APK(s) → Build APK(s)**
+
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+## Command-line build (no Android Studio UI)
+
+```bash
+npm run android:sync
+npm run android:verify
+cd android
+./gradlew clean
+./gradlew assembleDebug
+```
+
+## Important: uninstall the old APK first
+
+Android caches the WebView's localStorage and IndexedDB per app id. After
+big changes, **uninstall the previous version on the device** before installing
+the new APK so you start from a clean slate.
+
+## Why the preview can look fine but the APK breaks
+
+The hosted preview runs the full Vite/SSR web app. The APK runs a separate
+mobile-only static SPA bundle that lives in `dist-mobile/` and is copied into
+`android/app/src/main/assets/public`. Both folders are gitignored on purpose —
+they are generated artifacts. If you build an APK without first running
+`npm run android:sync`, the WebView either loads nothing or loads an old build.
+
+## Updating the launcher icon
+
+Replace `resources/icon.png` (1024×1024, fully transparent edges) and re-run:
 
 ```bash
 npm run android:sync
 ```
-
-If you need to regenerate launcher PNG density buckets manually, resize
-`resources/icon.png` into the `android/app/src/main/res/mipmap-*` folders while
-preserving transparency. Do **not** put it on a white/colored canvas.
-
-```bash
-npm run android:sync
-```
-
-## Where do downloads go?
-
-On Android, Statements / Invoices / Backups / CSV exports are written through
-Capacitor Filesystem to **`Khata/`** under the device's Documents (or external
-storage where available). Most file managers list it under
-`Internal storage → Documents → Khata` or `Internal storage → Khata`.
-
-On the web, downloads continue to use the browser save dialog.

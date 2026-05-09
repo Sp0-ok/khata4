@@ -10,6 +10,7 @@
     "build:mobile": "vite build --config vite.config.mobile.ts && node -e \"require('fs').renameSync('dist-mobile/index.mobile.html','dist-mobile/index.html')\"",
     "android:sync": "npm run build:mobile && cap sync android",
     "android:open": "npm run android:sync && cap open android",
+    "android:verify": "node scripts/verify-android-bundle.cjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."

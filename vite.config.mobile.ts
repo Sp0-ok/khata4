@@ -25,6 +25,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Relative base so the Android WebView can load assets from
+  // file:///android_asset/public/index.html without root-path lookups.
+  base: "./",
   build: {
     outDir: "dist-mobile",
     emptyOutDir: true,

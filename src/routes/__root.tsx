@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { type ReactNode } from "react";
 import {
   Outlet,
   createRootRouteWithContext,
@@ -22,7 +23,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
 });
 
-function RootShell({ children }: { children: React.ReactNode }) {
+function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>

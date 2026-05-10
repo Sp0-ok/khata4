@@ -13,6 +13,10 @@ import {
 import {
   Tabs, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";

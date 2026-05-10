@@ -8,11 +8,11 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { copyFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Bun's process.stdin lacks .off(); Vite's SIGTERM teardown calls it during
-// post-build prerender cleanup and crashes. Polyfill so the build can finish.
-if (typeof (process.stdin as any).off !== "function") {
-  (process.stdin as any).off = (process.stdin as any).removeListener?.bind(process.stdin) ?? (() => process.stdin);
-}
+// Bun's process.stdin behaves slightly differently from Node's; Vite's
+// SIGTERM teardown wires `process.stdin.on('end', ...)` and later calls
+// `.off(...)` on it during prerender cleanup, which can crash under Bun.
+// Setting CI=true makes Vite skip the stdin listener entirely.
+if (!process.env.CI) process.env.CI = "true";
 
 // SPA mode: TanStack emits a client-only shell at "/" so any deep link
 // (including the dynamic /customers/$id routes) resolves through the

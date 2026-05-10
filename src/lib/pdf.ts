@@ -20,11 +20,12 @@ export async function generateStatementPDF(
   businessName: string,
   currencySymbol: string,
   range?: { from: number; to: number },
+  opts?: { watermark?: boolean },
 ) {
   const all = (await db.transactions.where("partyId").equals(party.id!).toArray())
-    .sort((a, b) => a.date - b.date);
+    .sort((a, b) => a.createdAt - b.createdAt);
   const txns = range
-    ? all.filter(t => t.date >= range.from && t.date <= range.to)
+    ? all.filter(t => t.createdAt >= range.from && t.createdAt <= range.to)
     : all;
 
   const doc = new jsPDF();

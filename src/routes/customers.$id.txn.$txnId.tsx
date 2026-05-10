@@ -91,7 +91,7 @@ function EditTxn() {
         back={<Link to="/customers/$id" params={{ id }} className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
 
-      <form onSubmit={onSave} className="space-y-5 px-4 pb-8 pt-6">
+      <form onSubmit={askSave} className="space-y-5 px-4 pb-8 pt-6">
         <Tabs value={type} onValueChange={v => setType(v as TxnType)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="debit">You gave</TabsTrigger>

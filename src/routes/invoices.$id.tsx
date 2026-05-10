@@ -11,7 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db, calcInvoiceTotals, type InvoiceStatus } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
-import { downloadInvoice, shareWhatsApp } from "@/lib/pdf";
+// PDF helpers are dynamic-imported to keep jspdf out of the initial bundle.
+const lazyPdf = () => import("@/lib/pdf");
+const downloadInvoice = async (...args: Parameters<Awaited<ReturnType<typeof lazyPdf>>["downloadInvoice"]>) =>
+  (await lazyPdf()).downloadInvoice(...args);
+const shareWhatsApp = async (...args: Parameters<Awaited<ReturnType<typeof lazyPdf>>["shareWhatsApp"]>) =>
+  (await lazyPdf()).shareWhatsApp(...args);
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -86,9 +87,33 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <RoutePreloader />
         <Outlet />
         <Toaster position="top-center" />
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
+
+// Warm the bundle for every primary nav target after the first paint so
+// switching tabs is instant — important inside the Android WebView where
+// each new chunk fetch from disk still takes a frame or two.
+function RoutePreloader() {
+  const router = useRouter();
+  useEffect(() => {
+    const targets = ["/", "/customers", "/invoices", "/expenses", "/reports", "/settings"];
+    const run = () => {
+      for (const to of targets) {
+        router.preloadRoute({ to } as any).catch(() => undefined);
+      }
+    };
+    const w = window as any;
+    const id = w.requestIdleCallback ? w.requestIdleCallback(run, { timeout: 1500 }) : window.setTimeout(run, 400);
+    return () => {
+      if (w.cancelIdleCallback) w.cancelIdleCallback(id);
+      else clearTimeout(id);
+    };
+  }, [router]);
+  return null;
+}
+

@@ -441,15 +441,21 @@ function StatementDialog({
       const party = await db.parties.get(partyId);
       if (!party) throw new Error("Party not found");
       const settings = await getSettings();
-      const { generateStatementPDF } = await lazyPdf();
+      const { generateStatementPDF, tsSuffix } = await lazyPdf();
       const range = full ? undefined : {
         from: new Date(from).getTime(),
         to: new Date(to).getTime() + 86_399_000,
       };
-      const doc = await generateStatementPDF(party, settings.businessName, symbol, range);
+      const doc = await generateStatementPDF(party, settings.businessName, symbol, range, {
+        watermark: settings.statementWatermark !== false,
+      });
       const blob = doc.output("blob");
-      const suffix = full ? "full" : `${from}_${to}`;
-      await saveFile(`${partyName.replace(/\s+/g, "_")}_statement_${suffix}.pdf`, "application/pdf", blob);
+      const tag = full ? "full" : `${from}_${to}`;
+      await saveFile(
+        `${partyName.replace(/\s+/g, "_")}_statement_${tag}_${tsSuffix()}.pdf`,
+        "application/pdf",
+        blob,
+      );
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e.message || "Failed");

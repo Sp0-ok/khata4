@@ -54,7 +54,7 @@ function CustomerDetail() {
     [pid]
   );
   const openTxn = useLiveQuery(
-    () => openTxnId == null ? Promise.resolve(null) : db.transactions.get(openTxnId).then(t => t || null),
+    async () => openTxnId == null ? null : (await db.transactions.get(openTxnId)) ?? null,
     [openTxnId],
   );
   const balance = useLiveQuery(() => getPartyBalance(pid), [pid, txns?.length]) || 0;

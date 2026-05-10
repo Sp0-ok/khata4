@@ -16,6 +16,7 @@ import {
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { formatAmountInput, parseAmountInput } from "@/lib/format";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/customers/$id/txn/$txnId")({
 function EditTxn() {
   const { id, txnId } = Route.useParams();
   const navigate = useNavigate();
-  const { symbol } = useCurrency();
+  const { symbol, settings } = useCurrency();
 
   const [type, setType] = useState<TxnType>("debit");
   const [amount, setAmount] = useState("");
@@ -41,7 +42,7 @@ function EditTxn() {
     db.transactions.get(Number(txnId)).then(t => {
       if (!t) { toast.error("Not found"); navigate({ to: "/customers/$id", params: { id } }); return; }
       setType(t.type);
-      setAmount(String(t.amount));
+      setAmount(formatAmountInput(String(t.amount), undefined));
       setNote(t.note || "");
       setMethod(t.method);
       setDate(new Date(t.date).toISOString().slice(0, 10));
@@ -51,7 +52,7 @@ function EditTxn() {
 
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amt = parseFloat(amount);
+    const amt = parseAmountInput(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     setSaving(true);
     try {
@@ -59,10 +60,11 @@ function EditTxn() {
         type, amount: amt,
         note: note.trim() || undefined, method,
         date: new Date(date).getTime(),
+        updatedAt: Date.now(),
       });
       await db.parties.update(Number(id), { updatedAt: Date.now() });
       toast.success("Transaction updated");
-      navigate({ to: "/customers/$id", params: { id } });
+      navigate({ to: "/customers/$id", params: { id }, replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed");
     } finally { setSaving(false); }
@@ -93,10 +95,11 @@ function EditTxn() {
         >
           <p className="text-xs uppercase tracking-widest opacity-90">Amount</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold opacity-90">{symbol}</span>
+          <span className="text-2xl font-semibold opacity-90">{symbol}</span>
             <input
-              autoFocus type="number" inputMode="decimal" step="0.01" min="0"
-              value={amount} onChange={e => setAmount(e.target.value)}
+              autoFocus type="text" inputMode="decimal" autoComplete="off"
+              value={amount}
+              onChange={e => setAmount(formatAmountInput(e.target.value, settings?.currency))}
               className="w-full bg-transparent text-4xl font-bold tabular outline-none placeholder:text-white/60"
             />
           </div>

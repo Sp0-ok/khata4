@@ -55,10 +55,15 @@ function EditTxn() {
     });
   }, [txnId, id, navigate]);
 
-  const onSave = async (e: React.FormEvent) => {
+  const askSave = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseAmountInput(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    setConfirmOpen(true);
+  };
+
+  const doSave = async () => {
+    const amt = parseAmountInput(amount);
     setSaving(true);
     try {
       await db.transactions.update(Number(txnId), {
@@ -72,7 +77,7 @@ function EditTxn() {
       navigate({ to: "/customers/$id", params: { id }, replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed");
-    } finally { setSaving(false); }
+    } finally { setSaving(false); setConfirmOpen(false); }
   };
 
   if (!loaded) return <AppShell hideNav><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;

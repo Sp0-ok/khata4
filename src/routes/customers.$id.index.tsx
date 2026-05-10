@@ -44,7 +44,7 @@ function CustomerDetail() {
   const { format, symbol } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
-  const [openTxn, setOpenTxn] = useState<Transaction | null>(null);
+  const [openTxnId, setOpenTxnId] = useState<number | null>(null);
   const [stmtOpen, setStmtOpen] = useState(false);
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
@@ -52,6 +52,10 @@ function CustomerDetail() {
     () => db.transactions.where("partyId").equals(pid).toArray()
       .then(arr => arr.sort((a, b) => b.createdAt - a.createdAt)),
     [pid]
+  );
+  const openTxn = useLiveQuery(
+    () => openTxnId == null ? Promise.resolve(null) : db.transactions.get(openTxnId).then(t => t || null),
+    [openTxnId],
   );
   const balance = useLiveQuery(() => getPartyBalance(pid), [pid, txns?.length]) || 0;
 

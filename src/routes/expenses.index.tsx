@@ -28,6 +28,8 @@ function ExpensesList() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<number | null>(null);
   const expenses = useLiveQuery(
     () => db.expenses.toArray().then(arr => arr.sort((a, b) => b.createdAt - a.createdAt)),
     [],

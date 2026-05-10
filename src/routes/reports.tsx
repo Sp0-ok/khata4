@@ -305,7 +305,7 @@ function buildBuckets<T extends { date: number }, B extends Record<string, numbe
   }
 
   // Monthly buckets
-  const count = period === "all" ? Math.max(1, monthsSpan(items)) : months;
+  const count = period === "all" || period === "custom" ? Math.max(1, monthsSpan(items)) : months;
   const buckets: (B & { name: string })[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);

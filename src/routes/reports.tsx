@@ -285,7 +285,7 @@ function buildBuckets<T extends { date: number }, B extends Record<string, numbe
   items: T[], period: Period, add: (it: T, b: B) => void, init: B,
 ): (B & { name: string })[] {
   const now = new Date();
-  const months = PERIOD_MONTHS[period];
+  const months = period === "custom" || period === "all" ? 0 : PERIOD_MONTHS[period];
 
   if (period === "1m") {
     // Daily buckets for current month

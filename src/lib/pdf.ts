@@ -15,6 +15,12 @@ function imgFmt(dataUrl: string): "JPEG" | "PNG" {
   return dataUrl.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
 }
 
+/** Compact yyyymmdd_hhmmss for unique filenames. */
+export function tsSuffix(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
 export async function generateStatementPDF(
   party: Party,
   businessName: string,

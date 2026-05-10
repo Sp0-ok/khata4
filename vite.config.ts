@@ -8,6 +8,12 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { copyFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Bun's process.stdin lacks .off(); Vite's SIGTERM teardown calls it during
+// post-build prerender cleanup and crashes. Polyfill so the build can finish.
+if (typeof (process.stdin as any).off !== "function") {
+  (process.stdin as any).off = (process.stdin as any).removeListener?.bind(process.stdin) ?? (() => process.stdin);
+}
+
 // SPA mode: TanStack emits a client-only shell at "/" so any deep link
 // (including the dynamic /customers/$id routes) resolves through the
 // client router — required for the Capacitor Android build, which serves

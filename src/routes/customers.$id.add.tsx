@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useCurrency } from "@/lib/hooks";
 import { tapSuccess } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { formatAmountInput, parseAmountInput } from "@/lib/format";
+import { downscaleImage } from "@/lib/image";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
@@ -36,7 +37,17 @@ function AddTxn() {
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [photo, setPhoto] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
+    try { setPhoto(await downscaleImage(f, 1024)); }
+    catch (err: any) { toast.error(err.message || "Could not read image"); }
+    finally { e.target.value = ""; }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +62,9 @@ function AddTxn() {
         note: note.trim() || undefined,
         method,
         date: new Date(date).getTime(),
+        attachment: photo,
         createdAt: now,
+        updatedAt: now,
       });
       await db.parties.update(Number(id), { updatedAt: now });
       tapSuccess();
@@ -110,6 +123,27 @@ function AddTxn() {
         </Field>
         <Field label="Note">
           <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Optional details" maxLength={300} rows={3} />
+        </Field>
+
+        <Field label="Photo / Receipt">
+          {photo ? (
+            <div className="relative inline-block">
+              <img src={photo} alt="Attachment" className="max-h-44 rounded-xl border border-border object-contain" />
+              <button
+                type="button"
+                onClick={() => setPhoto(undefined)}
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                aria-label="Remove photo"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={() => photoRef.current?.click()}>
+              <ImagePlus className="mr-2 h-4 w-4" /> Add photo
+            </Button>
+          )}
+          <input ref={photoRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
         </Field>
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">

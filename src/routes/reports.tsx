@@ -140,6 +140,19 @@ function Reports() {
           ))}
         </div>
 
+        {period === "custom" && (
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">From</Label>
+              <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} max={customTo} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">To</Label>
+              <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} min={customFrom} className="h-9" />
+            </div>
+          </div>
+        )}
+
         <Tabs value={chartKind} onValueChange={v => { tapLight(); setChartKind(v as any); }}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="bars"><BarChart3 className="mr-1.5 h-3.5 w-3.5" /> Bars</TabsTrigger>

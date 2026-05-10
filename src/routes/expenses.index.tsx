@@ -54,6 +54,7 @@ function ExpensesList() {
   const onDelete = async (id: number) => {
     await db.expenses.delete(id);
     toast.success("Expense deleted");
+    setPendingDelete(null);
   };
 
   return (

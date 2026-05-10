@@ -30,7 +30,7 @@ function AddTxn() {
   const { id } = Route.useParams();
   const { type } = useSearch({ from: "/customers/$id/add" });
   const navigate = useNavigate();
-  const { symbol, settings } = useCurrency() as any;
+  const { symbol, settings } = useCurrency();
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");

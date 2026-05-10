@@ -81,6 +81,7 @@ export interface Settings {
   onboarded: boolean;
   logo?: string;
   invoiceWatermark?: boolean;
+  statementWatermark?: boolean;
   /** Where Capacitor saves PDFs / CSV exports. Asked once on first save. */
   downloadDir?: "documents" | "downloads";
   /** Default country dial code for new parties (e.g. "+92"). */

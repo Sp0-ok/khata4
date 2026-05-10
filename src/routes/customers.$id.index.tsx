@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useRef, useState } from "react";
 import {
-  ArrowDownLeft, ArrowUpRight, ChevronLeft, FileText, MessageCircle, MoreVertical,
-  Phone, Trash2, Pencil, Upload, Download,
+  ArrowDownLeft, ArrowUpRight, Camera, ChevronLeft, FileText, MessageCircle, MoreVertical,
+  Phone, Trash2, Pencil, Upload, Download, X, ImagePlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -11,14 +11,14 @@ import { AppShell, PageHeader } from "@/components/AppShell";
 import { Avatar } from "./customers.index";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { db, getPartyBalance, getSettings, type PaymentMethod, type TxnType } from "@/lib/db";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { db, getPartyBalance, getSettings, type PaymentMethod, type Transaction, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
-// PDF helpers are dynamic-imported to keep jspdf out of the initial bundle.
+import { downscaleImage } from "@/lib/image";
+import { saveFile } from "@/lib/saveFile";
+import { tapLight } from "@/lib/haptics";
 const lazyPdf = () => import("@/lib/pdf");
-const downloadStatement = async (...args: Parameters<Awaited<ReturnType<typeof lazyPdf>>["downloadStatement"]>) =>
-  (await lazyPdf()).downloadStatement(...args);
-const shareWhatsApp = async (...args: Parameters<Awaited<ReturnType<typeof lazyPdf>>["shareWhatsApp"]>) =>
-  (await lazyPdf()).shareWhatsApp(...args);
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -28,6 +28,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/customers/$id/")({
   head: () => ({ meta: [{ title: "Khata — Hisaab Kitaab" }] }),
@@ -41,6 +44,8 @@ function CustomerDetail() {
   const { format, symbol } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [openTxn, setOpenTxn] = useState<Transaction | null>(null);
+  const [stmtOpen, setStmtOpen] = useState(false);
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
   const txns = useLiveQuery(
@@ -53,21 +58,14 @@ function CustomerDetail() {
   if (party === undefined) return <AppShell><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
   if (!party) return <AppShell><div className="p-6">Party not found.</div></AppShell>;
 
-  const onShareReminder = () => {
+  const onShareReminder = async () => {
     const msg = balance > 0
-      ? `Assalam-o-Alaikum ${party.name}, your pending balance is ${format(balance)}. Kindly clear at your convenience. — Sent via Hisaab Kitaab.`
+      ? `Assalam-o-Alaikum ${party.name}, your pending balance is ${format(balance)}. Kindly clear at your convenience. — Hisaab Kitaab.`
       : balance < 0
-      ? `Assalam-o-Alaikum ${party.name}, our pending balance with you is ${format(balance)}. Will settle soon. — Hisaab Kitaab`
+      ? `Assalam-o-Alaikum ${party.name}, our pending balance with you is ${format(Math.abs(balance))}. Will settle soon. — Hisaab Kitaab`
       : `Assalam-o-Alaikum ${party.name}, your account is fully settled. Thank you!`;
+    const { shareWhatsApp } = await lazyPdf();
     shareWhatsApp(party.phone, msg);
-  };
-
-  const onDownloadPDF = async () => {
-    try {
-      const settings = await getSettings();
-      await downloadStatement(party, settings.businessName, symbol);
-      toast.success("Statement downloaded");
-    } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const onDeleteParty = async () => {
@@ -88,7 +86,6 @@ function CustomerDetail() {
         const parsed = JSON.parse(text);
         rows = Array.isArray(parsed) ? parsed : (parsed.transactions || []);
       } else {
-        // CSV: date,type,amount,method,note
         const lines = text.split(/\r?\n/).filter(l => l.trim());
         const header = lines.shift()?.toLowerCase().split(",").map(h => h.trim()) || [];
         rows = lines.map(line => {
@@ -112,6 +109,7 @@ function CustomerDetail() {
             ? String(r.method).toLowerCase() : "cash") as PaymentMethod,
           date: r.date ? new Date(r.date).getTime() : now,
           createdAt: now + i,
+          updatedAt: now + i,
         };
       });
       await db.transactions.bulkAdd(cleaned);
@@ -139,14 +137,11 @@ function CustomerDetail() {
         t.type, t.amount, t.method, t.note || "",
       ].map(csvLine).join(",")),
     ).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${party!.name.replace(/\s+/g, "_")}_transactions.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${list.length} transactions`);
+    await saveFile(`${party!.name.replace(/\s+/g, "_")}_transactions.csv`, "text/csv", csv);
   };
+
+  // Owe-direction colours: party owes you (balance > 0) → red gradient + minus.
+  const owesYou = balance > 0;
 
   return (
     <AppShell hideNav>
@@ -161,7 +156,7 @@ function CustomerDetail() {
               <DropdownMenuItem onClick={() => navigate({ to: "/customers/$id/edit", params: { id } })}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit party
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDownloadPDF}><FileText className="mr-2 h-4 w-4" /> Download statement</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStmtOpen(true)}><FileText className="mr-2 h-4 w-4" /> Save statement</DropdownMenuItem>
               <DropdownMenuItem onClick={onShareReminder}><MessageCircle className="mr-2 h-4 w-4" /> WhatsApp reminder</DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Import transactions</DropdownMenuItem>
               <DropdownMenuItem onClick={onExportTxns}><Download className="mr-2 h-4 w-4" /> Export transactions</DropdownMenuItem>
@@ -198,19 +193,26 @@ function CustomerDetail() {
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
-          style={{ background: "var(--gradient-primary)" }}
+          style={{
+            background: owesYou
+              ? "linear-gradient(135deg, var(--debit), oklch(0.5 0.18 25))"
+              : "var(--gradient-primary)",
+          }}
         >
           <div className="flex items-center gap-3">
             <Avatar name={party.name} photo={party.photo} size={48} />
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm opacity-90">{party.phone || "No phone"}</p>
+              <p className="truncate text-base font-semibold">{party.name}</p>
+              <p className="truncate text-xs opacity-90">{party.phone || "No phone"}</p>
             </div>
           </div>
           <div className="mt-4">
             <p className="text-[11px] uppercase tracking-widest opacity-80">
               {balance > 0 ? "You'll get" : balance < 0 ? "You'll give" : "Settled"}
             </p>
-            <p className="text-3xl font-bold tabular">{format(Math.abs(balance))}</p>
+            <p className="text-3xl font-bold tabular">
+              {owesYou ? "− " : ""}{format(Math.abs(balance))}
+            </p>
           </div>
         </motion.div>
       </section>
@@ -219,7 +221,7 @@ function CustomerDetail() {
         <Button variant="outline" className="h-11 rounded-xl" onClick={onShareReminder}>
           <MessageCircle className="mr-2 h-4 w-4" /> Reminder
         </Button>
-        <Button variant="outline" className="h-11 rounded-xl" onClick={onDownloadPDF}>
+        <Button variant="outline" className="h-11 rounded-xl" onClick={() => setStmtOpen(true)}>
           <FileText className="mr-2 h-4 w-4" /> Statement
         </Button>
       </section>
@@ -242,42 +244,47 @@ function CustomerDetail() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ type: "spring", stiffness: 380, damping: 28 }}
               >
-                <Card className="flex items-center gap-3 p-3">
-                  <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full",
-                    t.type === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
-                  )}>
-                    {t.type === "credit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
-                    <p className="text-[11px] text-muted-foreground capitalize">
-                      {new Date(t.date).toLocaleDateString()} · {t.method}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className={cn("text-sm font-bold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
-                      {format(t.amount)}
-                    </p>
-                    <div className="mt-1 flex items-center justify-end gap-1">
-                      <button
-                        aria-label="Edit"
-                        onClick={() => navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } })}
-                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      ><Pencil className="h-3.5 w-3.5" /></button>
-                      <button
-                        aria-label="Delete"
-                        onClick={() => setPendingDelete(t.id!)}
-                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      ><Trash2 className="h-3.5 w-3.5" /></button>
+                <button
+                  type="button"
+                  onClick={() => { tapLight(); setOpenTxn(t); }}
+                  className="w-full text-left"
+                >
+                  <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent/30 active:scale-[0.99]">
+                    <div className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full",
+                      t.type === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
+                    )}>
+                      {t.type === "credit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
                     </div>
-                  </div>
-                </Card>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
+                      <p className="text-[11px] text-muted-foreground capitalize">
+                        {new Date(t.date).toLocaleDateString()} · {t.method}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-sm font-bold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
+                        {format(t.amount)}
+                      </p>
+                      {t.attachment && <p className="mt-0.5 text-[10px] text-muted-foreground">📎</p>}
+                    </div>
+                  </Card>
+                </button>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
       </section>
+
+      <TxnDetailDialog
+        txn={openTxn}
+        onClose={() => setOpenTxn(null)}
+        onEdit={(t) => {
+          setOpenTxn(null);
+          navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } });
+        }}
+        onAskDelete={(t) => { setOpenTxn(null); setPendingDelete(t.id!); }}
+      />
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={o => !o && setPendingDelete(null)}>
         <AlertDialogContent>
@@ -297,6 +304,14 @@ function CustomerDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <StatementDialog
+        open={stmtOpen}
+        onOpenChange={setStmtOpen}
+        partyId={pid}
+        partyName={party.name}
+        symbol={symbol}
+      />
 
       <div className="sticky bottom-0 mt-6 grid grid-cols-2 gap-2 border-t border-border bg-card/95 px-4 py-3 backdrop-blur safe-bottom">
         <Button
@@ -318,6 +333,161 @@ function CustomerDetail() {
   );
 }
 
+function TxnDetailDialog({
+  txn, onClose, onEdit, onAskDelete,
+}: {
+  txn: Transaction | null;
+  onClose: () => void;
+  onEdit: (t: Transaction) => void;
+  onAskDelete: (t: Transaction) => void;
+}) {
+  const { format } = useCurrency();
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  if (!txn) return null;
+  const created = txn.createdAt;
+  const updated = txn.updatedAt || txn.createdAt;
+
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); return; }
+    try {
+      const dataUrl = await downscaleImage(f, 800);
+      await db.transactions.update(txn.id!, { attachment: dataUrl, updatedAt: Date.now() });
+      toast.success("Photo attached");
+    } catch (err: any) { toast.error(err.message); }
+    finally { e.target.value = ""; }
+  };
+  const removePhoto = async () => {
+    await db.transactions.update(txn.id!, { attachment: undefined, updatedAt: Date.now() });
+  };
+
+  return (
+    <Dialog open={!!txn} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className={txn.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]"}>
+            {txn.type === "credit" ? "You got" : "You gave"} · {format(txn.amount)}
+          </DialogTitle>
+          <DialogDescription>
+            {txn.note || (txn.type === "credit" ? "Received" : "Given")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 text-sm">
+          <Row label="Date">{new Date(txn.date).toLocaleString()}</Row>
+          <Row label="Method"><span className="capitalize">{txn.method}</span></Row>
+          <Row label="Created">{new Date(created).toLocaleString()}</Row>
+          <Row label="Last modified">{new Date(updated).toLocaleString()}</Row>
+
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Attachment</p>
+            {txn.attachment ? (
+              <div className="relative inline-block">
+                <img src={txn.attachment} alt="Attachment" className="max-h-44 rounded-xl border border-border object-contain" />
+                <button
+                  onClick={removePhoto}
+                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => photoRef.current?.click()}>
+                <ImagePlus className="mr-2 h-4 w-4" /> Add photo
+              </Button>
+            )}
+            <input ref={photoRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
+          </div>
+        </div>
+
+        <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
+          <Button variant="outline" onClick={() => onEdit(txn)}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
+          <Button variant="destructive" onClick={() => onAskDelete(txn)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{children}</span>
+    </div>
+  );
+}
+
+function StatementDialog({
+  open, onOpenChange, partyId, partyName, symbol,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  partyId: number;
+  partyName: string;
+  symbol: string;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const [from, setFrom] = useState(monthAgo);
+  const [to, setTo] = useState(today);
+  const [busy, setBusy] = useState(false);
+
+  const generate = async (full: boolean) => {
+    setBusy(true);
+    try {
+      const party = await db.parties.get(partyId);
+      if (!party) throw new Error("Party not found");
+      const settings = await getSettings();
+      const { generateStatementPDF } = await lazyPdf();
+      const range = full ? undefined : {
+        from: new Date(from).getTime(),
+        to: new Date(to).getTime() + 86_399_000,
+      };
+      const doc = await generateStatementPDF(party, settings.businessName, symbol, range);
+      const blob = doc.output("blob");
+      const suffix = full ? "full" : `${from}_${to}`;
+      await saveFile(`${partyName.replace(/\s+/g, "_")}_statement_${suffix}.pdf`, "application/pdf", blob);
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || "Failed");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Save statement</DialogTitle>
+          <DialogDescription>
+            Pick a date range or save the entire history.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} max={to} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={to} onChange={e => setTo(e.target.value)} min={from} />
+          </div>
+        </div>
+        <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
+          <Button variant="outline" disabled={busy} onClick={() => generate(true)}>
+            Full statement
+          </Button>
+          <Button disabled={busy} onClick={() => generate(false)}>
+            {busy ? "Saving…" : "Save range"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function parseCSVLine(line: string): string[] {
   const out: string[] = [];
   let cur = "", inQ = false;
@@ -336,3 +506,6 @@ function parseCSVLine(line: string): string[] {
   out.push(cur);
   return out.map(s => s.trim());
 }
+
+// Suppress an unused-import warning while keeping Camera available for future use.
+void Camera;

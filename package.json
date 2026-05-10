@@ -7,18 +7,11 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:mobile": "vite build --config vite.config.mobile.ts && node -e \"require('fs').renameSync('dist-mobile/index.mobile.html','dist-mobile/index.html')\"",
-    "android:sync": "npm run build:mobile && cap sync android",
-    "android:open": "npm run android:sync && cap open android",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@capacitor/app": "^8.1.0",
-    "@capacitor/core": "^8.3.3",
-    "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/keyboard": "^8.0.3",
     "@cloudflare/vite-plugin": "^1.25.5",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -79,9 +72,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.3.3",
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.3.3",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^1.5.1",
     "@types/node": "^22.16.5",

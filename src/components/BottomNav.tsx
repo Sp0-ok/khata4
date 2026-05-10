@@ -13,7 +13,7 @@ const items: { to: string; label: string; icon: typeof Home; exact?: boolean }[]
 export function BottomNav() {
   const loc = useLocation();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/90 backdrop-blur-lg safe-bottom">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-1 pt-1.5">
         {items.map(({ to, label, icon: Icon, exact }) => {
           const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);

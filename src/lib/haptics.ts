@@ -1,7 +1,6 @@
 // Tiny vibration helper. No-op on unsupported devices.
 export function haptic(pattern: number | number[] = 10) {
   try {
-    if (typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform?.()) return;
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
       navigator.vibrate(pattern);
     }

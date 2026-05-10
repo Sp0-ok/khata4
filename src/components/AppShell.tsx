@@ -22,7 +22,7 @@ export function PageHeader({
   back?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border/60 bg-card px-4 py-3">
+    <header className="sticky top-0 z-30 border-b border-border/60 bg-card/80 px-4 py-3 backdrop-blur-lg">
       <div className="flex items-center gap-3">
         {back}
         <div className="flex-1 min-w-0">

@@ -1,43 +1,76 @@
-## Problem
+## 1. Fix the "You'll get / You'll give" logic (root bug)
 
-`npx cap sync android` fails with:
+In `src/lib/db.ts`, change `getPartyBalance` and `getAllBalances` so that:
+- `debit` (You gave) → **adds** to balance (party owes you more)
+- `credit` (You got) → **subtracts** from balance (party paid back)
 
-```
-The web assets directory (./dist) must contain an index.html file.
-```
+Then a positive balance = "You'll get", negative = "You'll give" stays consistent everywhere. Also flip the running-balance math in `src/lib/pdf.ts` (`generateStatementPDF`) so the PDF statement matches.
 
-This app is built on TanStack Start with the Cloudflare Worker plugin. Its `vite build` output is an SSR bundle (server worker + client assets in `dist/client`) — there is no top-level `dist/index.html`, so Capacitor (which only ships static web assets into the Android WebView) has nothing to load.
+No UI label changes needed — only the sign convention. Verify on:
+- Party detail header (`customers.$id.index.tsx`)
+- Parties list totals (`customers.index.tsx`)
+- Dashboard receivable/payable (`index.tsx`)
 
-The npm warnings shown above the error are just deprecation notices from transitive dependencies — they are not failures and don't need to be fixed for the Android build to work. The only real blocker is the missing `index.html`.
+## 2. Party detail screen — edit, delete confirm, import
 
-The app's data layer (Dexie/IndexedDB) is fully client-side, so the app does not need SSR on Android — a plain SPA shell is enough.
+In `src/routes/customers.$id.index.tsx`:
+- Replace the inline "Delete" text button on each transaction with a confirm `AlertDialog` (same pattern already used for party delete).
+- Add an **Edit** pencil button on each transaction → opens new route `customers.$id.edit.$txnId.tsx` (form mirrors `customers.$id.add.tsx`, prefilled). On Save → show a confirm `AlertDialog` ("Save changes?") before committing.
+- Add an **Import transactions** action in the party's `…` dropdown menu. Accept CSV/JSON of this party's txns (date, type, amount, method, note). Validate, bulk insert via `db.transaction("rw", ...)`, show row count toast.
 
-## Plan
+## 3. Dashboard rework (`src/routes/index.tsx`)
 
-1. **Add a mobile-only static SPA build**
-   - Add a small dedicated Vite config (e.g. `vite.config.mobile.ts`) that does **not** use the TanStack Start / Cloudflare Worker plugin and instead builds a normal client-only React app.
-   - Use TanStack Router's memory/file-based routing in client-only mode, mounted from a small `src/main.mobile.tsx` entry that renders `<RouterProvider router={getRouter()} />` into `#root`.
-   - Add a static `index.mobile.html` (becomes `dist-mobile/index.html`) that loads that entry.
-   - Output to `dist-mobile/` so it doesn't collide with the Worker build in `dist/`.
+- Remove `Sales (mo)`, `Expense (mo)`, `Profit (mo)` MiniStat row entirely.
+- Net Balance = `receivable − payable` from parties only (already does — confirm invoices/expenses are not mixed in; they aren't, but remove the now-unused `invoices`/`expenses` queries and `monthSales/monthExpenses/monthProfit` math).
+- Reorder Quick Actions: **You'll Get → You'll Give → New Invoice → Add Expense**.
+- Change "You'll Get" / "You'll Give" tiles: instead of linking to `/customers/new`, open a bottom-sheet party picker. If parties exist → list them filtered by type (customer for Get, supplier for Give); selecting one navigates to `customers/$id/add?type=debit` (Get tile = record what you gave them) or `?type=credit` (Give tile = record paying a supplier). If zero parties → fall back to `/customers/new`.
 
-2. **Wire Capacitor to the new output**
-   - Change `capacitor.config.ts` `webDir` from `"dist"` to `"dist-mobile"`.
-   - Add npm scripts:
-     - `build:mobile` → `vite build --config vite.config.mobile.ts`
-     - `android:sync` → `npm run build:mobile && npx cap sync android`
-     - `android:open` → `npm run android:sync && npx cap open android`
-   - Update `ANDROID_BUILD.md` so the documented commands match (`npm run android:sync` instead of `npm run build && npx cap sync android`).
+Implement the picker as a reusable `<PartyPickerSheet>` in `src/components/PartyPickerSheet.tsx` using shadcn `Sheet`.
 
-3. **Make the existing root route SPA-safe**
-   - `src/routes/__root.tsx` currently renders the full `<html><body>` shell via `shellComponent` for SSR. For the mobile build, the static `index.html` already provides that shell, so the SPA entry will mount only `RootComponent` (which renders `<Outlet />` + providers). No edits to route files are required — only the entry chooses what to render.
-   - Verify nothing in the route tree imports server-only modules at module scope (`*.server.ts`, server functions). If any do, move those imports inside event handlers so the mobile bundle stays clean.
+## 4. Reports screen rework (`src/routes/reports.tsx`)
 
-4. **Validate**
-   - Run `npm run build:mobile` and confirm `dist-mobile/index.html` plus hashed JS/CSS assets exist.
-   - Run `npx cap sync android` and confirm it copies assets without the previous error.
-   - Sanity check the SPA in a browser by serving `dist-mobile/` (e.g. `npx serve dist-mobile`) so onboarding, parties, statements, and downloads all work before pushing to a device.
-   - Leave the existing web/Cloudflare build (`npm run build`) untouched so the hosted preview keeps working.
+- Add a top segmented switch: **Parties** | **Business** (invoices + expenses).
+- Add a second switch: **Bars** | **Lines** (recharts `BarChart` vs `LineChart` with smooth curves, gradient fills under the lines, dot markers).
+- **Parties view**: monthly Received vs Given (from `db.transactions`), totals, and Top open balances list.
+- **Business view**: existing 6-month Sales vs Expenses chart + Expenses-by-category pie + Sales/Expense/Profit cards. No mixing between the two views.
 
-## Notes on the npm warnings
+## 5. Expenses screen copy fix (`src/routes/expenses.index.tsx`)
 
-The deprecation warnings (`q`, `uuid@7`, `tar@6`, `glob@9`, `prebuild-install`, etc.) come from build-time transitive dependencies of `@capacitor/assets` and similar tooling. They do not affect the Android app at runtime and are out of scope for this fix; npm `audit` highs can be revisited separately if you want.
+Replace `"Track every rupee you spend"` with a currency-neutral subtitle: `"Track every {currency} you spend"` using `useCurrency().settings.currency` (e.g. "Track every PKR you spend"), or simply `"Track every expense"` if the currency code feels awkward. Use the dynamic version.
+
+## 6. Settings — business logo (`src/routes/settings.tsx` + `src/lib/db.ts`)
+
+`Settings.logo` field already exists. Add to the Business card:
+- A round preview (or placeholder) + "Upload logo" / "Remove" buttons.
+- File input (image/*), max ~512 KB, downscale to 256×256 via canvas, store as data URL in `settings.logo`.
+- In `src/lib/pdf.ts` `generateInvoicePDF`, if `s.logo` exists, draw it top-left of the header band before the business name (use `doc.addImage(logo, "PNG", x, y, w, h)`).
+
+## 7. Dark theme rework (`src/styles.css`)
+
+Current dark mode is too saturated green. Rebalance:
+- `--background`: very dark near-neutral with a hint of cool blue (e.g. `oklch(0.16 0.008 240)`)
+- `--card`, `--popover`: `oklch(0.21 0.008 240)`
+- `--muted`, `--secondary`, `--accent`: drop chroma to ~0.01–0.02
+- `--border`, `--input`: keep neutral white-alpha
+- `--primary` stays teal but slightly less saturated (`oklch(0.7 0.1 175)`); `--gradient-primary` tones the green/teal mix down so big surfaces aren't overpowering.
+- Keep `--credit` green and `--debit` red as semantic accents only.
+
+Light mode stays as is.
+
+## 8. Verify
+
+After changes, manually verify in preview:
+- Add party → You gave 10k → You got 5k → header shows **You'll get 5k** ✓
+- Dashboard mini-stats row gone, Net Balance only reflects parties ✓
+- Home "You'll Get" tile opens picker with existing parties ✓
+- Edit/delete a transaction → confirmation dialog appears ✓
+- Reports → switch Parties/Business and Bars/Lines ✓
+- Settings → upload logo → generate invoice PDF → logo present ✓
+- Toggle dark mode → noticeably less green, more neutral ✓
+
+### Technical notes
+
+- Sign-convention flip is a one-line change per function but touches the meaning of historical data — since data is local-only and the sign was always interpreted at render time the same wrong way, simply flipping the math fixes existing records too (their displayed balance becomes correct). No migration needed.
+- `Settings.logo` data URL adds bytes to every backup JSON; that's fine for one logo.
+- `<PartyPickerSheet>` keeps the dashboard quick actions snappy without a full route navigation.
+- The reports view toggle uses local `useState`, no schema change.

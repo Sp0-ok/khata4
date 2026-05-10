@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
-import { saveFile } from "@/lib/native-download";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -27,8 +26,13 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-async function downloadFile(name: string, mime: string, content: string) {
-  return saveFile(name, content, mime);
+function downloadFile(name: string, mime: string, content: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
 
 
@@ -75,12 +79,12 @@ function SettingsPage() {
         invoices: await db.invoices.toArray(),
         expenses: await db.expenses.toArray(),
       };
-      await downloadFile(
+      downloadFile(
         `hisaab-kitaab-backup-${new Date().toISOString().slice(0, 10)}.json`,
         "application/json",
         JSON.stringify(data, null, 2),
       );
-      toast.success("Backup saved");
+      toast.success("Backup downloaded");
     } catch (e: any) {
       toast.error(e.message || "Export failed");
     }

@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { db, getPartyBalance, getSettings, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { downloadStatement, shareWhatsApp } from "@/lib/pdf";
-import { saveFile } from "@/lib/native-download";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -37,7 +36,6 @@ function CustomerDetail() {
   const { format, symbol } = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
-  const [pendingEdit, setPendingEdit] = useState<number | null>(null);
 
   const party = useLiveQuery(() => db.parties.get(pid), [pid]);
   const txns = useLiveQuery(
@@ -137,7 +135,11 @@ function CustomerDetail() {
       ].map(csvLine).join(",")),
     ).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    await saveFile(`${party!.name.replace(/\s+/g, "_")}_transactions.csv`, blob, "text/csv");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${party!.name.replace(/\s+/g, "_")}_transactions.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
     toast.success(`Exported ${list.length} transactions`);
   };
 
@@ -255,7 +257,7 @@ function CustomerDetail() {
                     <div className="mt-1 flex items-center justify-end gap-1">
                       <button
                         aria-label="Edit"
-                        onClick={() => setPendingEdit(t.id!)}
+                        onClick={() => navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } })}
                         className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                       ><Pencil className="h-3.5 w-3.5" /></button>
                       <button
@@ -287,23 +289,6 @@ function CustomerDetail() {
               }
               setPendingDelete(null);
             }}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={pendingEdit !== null} onOpenChange={o => !o && setPendingEdit(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Edit this entry?</AlertDialogTitle>
-            <AlertDialogDescription>You can change the amount, type, date or note.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              const tid = pendingEdit;
-              setPendingEdit(null);
-              if (tid != null) navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(tid) } });
-            }}>Edit</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

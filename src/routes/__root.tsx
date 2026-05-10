@@ -50,7 +50,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#fbfdfc" },
+      { name: "theme-color", content: "#0d9488" },
       { title: "Hisaab Kitaab — Digital Khata for Small Business" },
       { name: "description", content: "Free offline Digital Khata, ledger and bookkeeping app. No ads, no subscriptions, no tracking." },
       { property: "og:title", content: "Hisaab Kitaab — Digital Khata" },
@@ -69,6 +69,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body>
         {children}

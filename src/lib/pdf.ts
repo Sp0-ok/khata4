@@ -54,8 +54,8 @@ export async function generateStatementPDF(
   if (party.phone) doc.text(`Phone: ${party.phone}`, w / 2, 30, { align: "center" });
 
   const opening = party.openingBalance || 0;
-  const firstDate = txns[0]?.date ?? Date.now();
-  const lastDate = txns[txns.length - 1]?.date ?? Date.now();
+  const firstDate = txns[0]?.createdAt ?? Date.now();
+  const lastDate = txns[txns.length - 1]?.createdAt ?? Date.now();
   const fmtDate = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
   doc.text(`(${fmtDate(firstDate)} - ${fmtDate(lastDate)})`, w / 2, 35, { align: "center" });
 

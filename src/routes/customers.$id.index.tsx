@@ -250,7 +250,7 @@ function CustomerDetail() {
               >
                 <button
                   type="button"
-                  onClick={() => { tapLight(); setOpenTxn(t); }}
+                  onClick={() => { tapLight(); setOpenTxnId(t.id!); }}
                   className="w-full text-left"
                 >
                   <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent/30 active:scale-[0.99]">
@@ -281,13 +281,13 @@ function CustomerDetail() {
       </section>
 
       <TxnDetailDialog
-        txn={openTxn}
-        onClose={() => setOpenTxn(null)}
+        txn={openTxn ?? null}
+        onClose={() => setOpenTxnId(null)}
         onEdit={(t) => {
-          setOpenTxn(null);
+          setOpenTxnId(null);
           navigate({ to: "/customers/$id/txn/$txnId", params: { id, txnId: String(t.id) } });
         }}
-        onAskDelete={(t) => { setOpenTxn(null); setPendingDelete(t.id!); }}
+        onAskDelete={(t) => { setOpenTxnId(null); setPendingDelete(t.id!); }}
       />
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={o => !o && setPendingDelete(null)}>

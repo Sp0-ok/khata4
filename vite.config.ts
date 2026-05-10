@@ -15,7 +15,6 @@ export default defineConfig({
     spa: {
       enabled: true,
       maskPath: "/",
-      prerender: { enabled: true, crawlLinks: true },
     },
   },
 });

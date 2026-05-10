@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { db, EXPENSE_CATEGORIES, type PaymentMethod } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
+import { formatAmountInput, parseAmountInput } from "@/lib/format";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
@@ -25,10 +26,11 @@ function NewExpense() {
   const navigate = useNavigate();
   const { id: editId } = useSearch({ from: "/expenses/new" });
   const isEdit = editId != null;
-  const { symbol } = useCurrency();
+  const { symbol, settings } = useCurrency();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Other");
+  const [customCategory, setCustomCategory] = useState("");
   const [vendor, setVendor] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -39,7 +41,12 @@ function NewExpense() {
     if (!isEdit) return;
     db.expenses.get(editId!).then(e => {
       if (!e) { toast.error("Expense not found"); navigate({ to: "/expenses" }); return; }
-      setTitle(e.title); setAmount(String(e.amount)); setCategory(e.category);
+      setTitle(e.title); setAmount(formatAmountInput(String(e.amount)));
+      if (EXPENSE_CATEGORIES.includes(e.category)) {
+        setCategory(e.category);
+      } else {
+        setCategory("Other"); setCustomCategory(e.category);
+      }
       setVendor(e.vendor || ""); setMethod(e.method);
       setDate(new Date(e.date).toISOString().slice(0, 10));
       setNotes(e.notes || "");
@@ -49,14 +56,17 @@ function NewExpense() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error("Title is required");
-    const amt = parseFloat(amount);
+    const amt = parseAmountInput(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    const finalCategory = category === "Other" && customCategory.trim()
+      ? customCategory.trim()
+      : category;
     setSaving(true);
     try {
       const payload = {
         title: title.trim(),
         amount: amt,
-        category,
+        category: finalCategory,
         vendor: vendor.trim() || undefined,
         method,
         date: new Date(date).getTime(),
@@ -85,10 +95,12 @@ function NewExpense() {
         <div className="rounded-3xl p-5 text-white shadow-[var(--shadow-elevated)]" style={{ background: "var(--debit)" }}>
           <p className="text-xs uppercase tracking-widest opacity-90">Amount</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold opacity-90">{symbol}</span>
+          <span className="text-2xl font-semibold opacity-90">{symbol}</span>
             <input
-              autoFocus type="number" inputMode="decimal" step="0.01" min="0"
-              value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
+              autoFocus type="text" inputMode="decimal" autoComplete="off"
+              value={amount}
+              onChange={e => setAmount(formatAmountInput(e.target.value, settings?.currency))}
+              placeholder="0"
               className="w-full bg-transparent text-4xl font-bold tabular outline-none placeholder:text-white/60"
             />
           </div>
@@ -104,6 +116,15 @@ function NewExpense() {
               {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+          {category === "Other" && (
+            <Input
+              value={customCategory}
+              onChange={e => setCustomCategory(e.target.value)}
+              placeholder="Custom category name (optional)"
+              maxLength={40}
+              className="mt-2"
+            />
+          )}
         </Field>
         <Field label="Vendor (optional)">
           <Input value={vendor} onChange={e => setVendor(e.target.value)} maxLength={120} />

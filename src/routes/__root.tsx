@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
+import { SaveFolderPicker } from "@/components/SaveFolderPicker";
 
 function NotFoundComponent() {
   return (
@@ -84,12 +85,19 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    // Suppress the WebView long-press context popup that shows the URL.
+    const stop = (e: Event) => e.preventDefault();
+    document.addEventListener("contextmenu", stop);
+    return () => document.removeEventListener("contextmenu", stop);
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RoutePreloader />
         <Outlet />
         <Toaster position="top-center" />
+        <SaveFolderPicker />
       </ThemeProvider>
     </QueryClientProvider>
   );

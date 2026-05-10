@@ -284,6 +284,7 @@ function SettingsPage() {
               Reset (ask again next time)
             </Button>
           )}
+        </Card>
 
         <Card className="space-y-3 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-sm font-semibold">

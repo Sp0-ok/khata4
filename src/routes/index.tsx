@@ -147,28 +147,28 @@ function Dashboard() {
 
       <section className="grid grid-cols-2 gap-3 px-4 pt-4">
         <PartyPickerSheet
-          title="Record what you gave (You'll get)"
-          txnType="debit"
+          title="Record what you got (You got)"
+          txnType="credit"
           trigger={
             <button className="text-left">
               <QuickCard
                 tone="credit"
                 icon={<ArrowDownLeft className="h-5 w-5" />}
-                label="You'll Get"
+                label="You Got"
                 sub="Pick a party"
               />
             </button>
           }
         />
         <PartyPickerSheet
-          title="Record a payment (You'll give)"
-          txnType="credit"
+          title="Record what you gave (You gave)"
+          txnType="debit"
           trigger={
             <button className="text-left">
               <QuickCard
                 tone="debit"
                 icon={<ArrowUpRight className="h-5 w-5" />}
-                label="You'll Give"
+                label="You Gave"
                 sub="Pick a party"
               />
             </button>

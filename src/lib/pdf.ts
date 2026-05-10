@@ -291,8 +291,10 @@ export async function generateInvoicePDF(inv: Invoice) {
 }
 
 export async function downloadInvoice(inv: Invoice) {
+  const { saveFile } = await import("./saveFile");
   const doc = await generateInvoicePDF(inv);
-  doc.save(`${inv.number}.pdf`);
+  const blob = doc.output("blob");
+  await saveFile(`${inv.number}_${tsSuffix()}.pdf`, "application/pdf", blob);
 }
 
 export function shareWhatsApp(phone: string | undefined, text: string) {

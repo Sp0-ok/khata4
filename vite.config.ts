@@ -12,7 +12,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // dist/client as static files inside the WebView.
 export default defineConfig({
   tanstackStart: {
-    server: { entry: "server" },
     spa: {
       enabled: true,
       maskPath: "/",

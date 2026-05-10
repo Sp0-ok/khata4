@@ -10,6 +10,7 @@ import { join } from "node:path";
 const CLIENT_DIR = "dist/client";
 const SHELL_CANDIDATES = [
   "index.html",
+  "_shell.html",
   "_shell/index.html",
   "__spa/index.html",
 ];

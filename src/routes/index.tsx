@@ -65,8 +65,8 @@ function Dashboard() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
           <h1 className="truncate text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
         </div>
-        <Link
-          to="/settings"
+        <button
+          type="button"
           aria-label="Settings"
           onMouseDown={startHold}
           onMouseUp={cancelHold}
@@ -74,11 +74,18 @@ function Dashboard() {
           onTouchStart={startHold}
           onTouchEnd={cancelHold}
           onTouchCancel={cancelHold}
-          onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            if (holdFired.current) { holdFired.current = false; return; }
+            tapLight();
+            navigate({ to: "/settings" });
+          }}
+          style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />
-        </Link>
+        </button>
       </header>
 
       <AnimatePresence>

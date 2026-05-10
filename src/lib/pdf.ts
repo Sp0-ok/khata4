@@ -118,7 +118,7 @@ export async function generateStatementPDF(
     const balanceTxt = formatMoney(Math.abs(running), currencySymbol);
     return [
       { content: String(idx + 1), styles: { halign: "center" } },
-      { content: fmtDateTime(t.date), styles: { textColor: 60, fontSize: 8 } },
+      { content: fmtDateTime(t.createdAt), styles: { textColor: 60, fontSize: 8 } },
       { content: t.note || (t.type === "credit" ? "Received" : "Given"), styles: { textColor: 30 } },
       {
         content: t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "",

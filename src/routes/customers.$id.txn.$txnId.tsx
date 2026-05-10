@@ -41,6 +41,7 @@ function EditTxn() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     db.transactions.get(Number(txnId)).then(t => {

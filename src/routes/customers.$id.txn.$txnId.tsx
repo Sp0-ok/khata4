@@ -13,6 +13,10 @@ import {
 import {
   Tabs, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -37,6 +41,7 @@ function EditTxn() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     db.transactions.get(Number(txnId)).then(t => {
@@ -50,10 +55,15 @@ function EditTxn() {
     });
   }, [txnId, id, navigate]);
 
-  const onSave = async (e: React.FormEvent) => {
+  const askSave = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseAmountInput(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    setConfirmOpen(true);
+  };
+
+  const doSave = async () => {
+    const amt = parseAmountInput(amount);
     setSaving(true);
     try {
       await db.transactions.update(Number(txnId), {
@@ -67,7 +77,7 @@ function EditTxn() {
       navigate({ to: "/customers/$id", params: { id }, replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed");
-    } finally { setSaving(false); }
+    } finally { setSaving(false); setConfirmOpen(false); }
   };
 
   if (!loaded) return <AppShell hideNav><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
@@ -81,7 +91,7 @@ function EditTxn() {
         back={<Link to="/customers/$id" params={{ id }} className="rounded-full p-1 hover:bg-accent"><ChevronLeft className="h-5 w-5" /></Link>}
       />
 
-      <form onSubmit={onSave} className="space-y-5 px-4 pb-8 pt-6">
+      <form onSubmit={askSave} className="space-y-5 px-4 pb-8 pt-6">
         <Tabs value={type} onValueChange={v => setType(v as TxnType)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="debit">You gave</TabsTrigger>
@@ -126,6 +136,23 @@ function EditTxn() {
           </Button>
         </div>
       </form>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The transaction will be updated and "Last modified" will reflect now.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={doSave} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

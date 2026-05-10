@@ -10,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { db, EXPENSE_CATEGORIES } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -24,6 +28,8 @@ function ExpensesList() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<number | null>(null);
   const expenses = useLiveQuery(
     () => db.expenses.toArray().then(arr => arr.sort((a, b) => b.createdAt - a.createdAt)),
     [],
@@ -48,6 +54,7 @@ function ExpensesList() {
   const onDelete = async (id: number) => {
     await db.expenses.delete(id);
     toast.success("Expense deleted");
+    setPendingDelete(null);
   };
 
   return (
@@ -101,12 +108,12 @@ function ExpensesList() {
                   <p className="text-sm font-bold tabular text-[color:var(--debit)]">{format(e.amount)}</p>
                   <div className="mt-1 flex items-center justify-end gap-1">
                     <button aria-label="Edit"
-                      onClick={() => navigate({ to: "/expenses/new", search: { id: e.id! } })}
+                      onClick={() => setPendingEdit(e.id!)}
                       className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button aria-label="Delete"
-                      onClick={() => onDelete(e.id!)}
+                      onClick={() => setPendingDelete(e.id!)}
                       className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -134,6 +141,36 @@ function ExpensesList() {
       >
         <Plus className="h-6 w-6" />
       </Link>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={o => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => pendingDelete != null && onDelete(pendingDelete)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingEdit !== null} onOpenChange={o => !o && setPendingEdit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit this expense?</AlertDialogTitle>
+            <AlertDialogDescription>You'll be taken to the edit screen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const idToEdit = pendingEdit!;
+              setPendingEdit(null);
+              navigate({ to: "/expenses/new", search: { id: idToEdit } });
+            }}>Edit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

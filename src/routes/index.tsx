@@ -65,8 +65,8 @@ function Dashboard() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
           <h1 className="truncate text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
         </div>
-        <Link
-          to="/settings"
+        <button
+          type="button"
           aria-label="Settings"
           onMouseDown={startHold}
           onMouseUp={cancelHold}
@@ -74,11 +74,18 @@ function Dashboard() {
           onTouchStart={startHold}
           onTouchEnd={cancelHold}
           onTouchCancel={cancelHold}
-          onClick={(e) => { if (holdFired.current) { e.preventDefault(); holdFired.current = false; } else { tapLight(); } }}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            if (holdFired.current) { holdFired.current = false; return; }
+            tapLight();
+            navigate({ to: "/settings" });
+          }}
+          style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground select-none"
         >
           <SettingsIcon className="h-5 w-5" />
-        </Link>
+        </button>
       </header>
 
       <AnimatePresence>
@@ -140,28 +147,28 @@ function Dashboard() {
 
       <section className="grid grid-cols-2 gap-3 px-4 pt-4">
         <PartyPickerSheet
-          title="Record what you gave (You'll get)"
-          txnType="debit"
+          title="Record what you got (You got)"
+          txnType="credit"
           trigger={
             <button className="text-left">
               <QuickCard
                 tone="credit"
                 icon={<ArrowDownLeft className="h-5 w-5" />}
-                label="You'll Get"
+                label="You Got"
                 sub="Pick a party"
               />
             </button>
           }
         />
         <PartyPickerSheet
-          title="Record a payment (You'll give)"
-          txnType="credit"
+          title="Record what you gave (You gave)"
+          txnType="debit"
           trigger={
             <button className="text-left">
               <QuickCard
                 tone="debit"
                 icon={<ArrowUpRight className="h-5 w-5" />}
-                label="You'll Give"
+                label="You Gave"
                 sub="Pick a party"
               />
             </button>
@@ -180,7 +187,7 @@ function Dashboard() {
           <h2 className="text-sm font-semibold text-muted-foreground">Recent activity</h2>
           <Link to="/customers" className="text-xs font-medium text-primary">View all</Link>
         </div>
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-4">
           {recent && recent.length === 0 && (
             <Card className="flex flex-col items-center gap-3 p-8 text-center">
               <div className="rounded-full bg-accent p-3"><TrendingUp className="h-6 w-6 text-primary" /></div>

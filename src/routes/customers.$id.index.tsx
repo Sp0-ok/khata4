@@ -347,6 +347,8 @@ function TxnDetailDialog({
 }) {
   const { format } = useCurrency();
   const photoRef = useRef<HTMLInputElement>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   if (!txn) return null;
   const created = txn.createdAt;
@@ -356,7 +358,7 @@ function TxnDetailDialog({
     const f = e.target.files?.[0]; if (!f) return;
     if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); return; }
     try {
-      const dataUrl = await downscaleImage(f, 800);
+      const dataUrl = await downscaleImage(f, 1024);
       await db.transactions.update(txn.id!, { attachment: dataUrl, updatedAt: Date.now() });
       toast.success("Photo attached");
     } catch (err: any) { toast.error(err.message); }
@@ -364,54 +366,109 @@ function TxnDetailDialog({
   };
   const removePhoto = async () => {
     await db.transactions.update(txn.id!, { attachment: undefined, updatedAt: Date.now() });
+    setConfirmRemove(false);
+    toast.success("Photo removed");
+  };
+  const saveAttachment = async () => {
+    if (!txn.attachment) return;
+    const m = txn.attachment.match(/^data:(.+?);base64,(.+)$/);
+    if (!m) return;
+    const mime = m[1];
+    const ext = mime.includes("png") ? "png" : "jpg";
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const { tsSuffix } = await lazyPdf();
+    await saveFile(`receipt_${txn.id}_${tsSuffix()}.${ext}`, mime, bytes);
   };
 
   return (
-    <Dialog open={!!txn} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className={txn.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]"}>
-            {txn.type === "credit" ? "You got" : "You gave"} · {format(txn.amount)}
-          </DialogTitle>
-          <DialogDescription>
-            {txn.note || (txn.type === "credit" ? "Received" : "Given")}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={!!txn} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className={txn.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]"}>
+              {txn.type === "credit" ? "You got" : "You gave"} · {format(txn.amount)}
+            </DialogTitle>
+            <DialogDescription>
+              {txn.note || (txn.type === "credit" ? "Received" : "Given")}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-3 text-sm">
-          <Row label="Date">{new Date(txn.date).toLocaleString()}</Row>
-          <Row label="Method"><span className="capitalize">{txn.method}</span></Row>
-          <Row label="Created">{new Date(created).toLocaleString()}</Row>
-          <Row label="Last modified">{new Date(updated).toLocaleString()}</Row>
+          <div className="space-y-3 text-sm">
+            <Row label="Method"><span className="capitalize">{txn.method}</span></Row>
+            <Row label="Created">{new Date(created).toLocaleString()}</Row>
+            <Row label="Last modified">{new Date(updated).toLocaleString()}</Row>
 
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Attachment</p>
-            {txn.attachment ? (
-              <div className="relative inline-block">
-                <img src={txn.attachment} alt="Attachment" className="max-h-44 rounded-xl border border-border object-contain" />
-                <button
-                  onClick={removePhoto}
-                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
-                  aria-label="Remove photo"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => photoRef.current?.click()}>
-                <ImagePlus className="mr-2 h-4 w-4" /> Add photo
-              </Button>
-            )}
-            <input ref={photoRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Attachment</p>
+              {txn.attachment ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewerOpen(true)}
+                    className="block overflow-hidden rounded-xl border border-border"
+                  >
+                    <img src={txn.attachment} alt="Attachment" className="max-h-44 w-full object-contain" />
+                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setViewerOpen(true)}>
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> View
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={saveAttachment}>
+                      <Download className="mr-1.5 h-3.5 w-3.5" /> Save image
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => photoRef.current?.click()}>
+                      <Upload className="mr-1.5 h-3.5 w-3.5" /> Replace
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setConfirmRemove(true)}>
+                      <X className="mr-1.5 h-3.5 w-3.5" /> Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => photoRef.current?.click()}>
+                  <ImagePlus className="mr-2 h-4 w-4" /> Add photo
+                </Button>
+              )}
+              <input ref={photoRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
+            </div>
           </div>
-        </div>
 
-        <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
-          <Button variant="outline" onClick={() => onEdit(txn)}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
-          <Button variant="destructive" onClick={() => onAskDelete(txn)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="outline" onClick={() => onEdit(txn)}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
+            <Button variant="destructive" onClick={() => onAskDelete(txn)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {txn.attachment && (
+        <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+          <DialogContent className="max-w-2xl p-2">
+            <img src={txn.attachment} alt="Attachment" className="max-h-[80vh] w-full rounded-lg object-contain" />
+            <div className="flex justify-end gap-2 px-2 pb-2">
+              <Button size="sm" variant="outline" onClick={saveAttachment}>
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Save image
+              </Button>
+              <Button size="sm" onClick={() => setViewerOpen(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this photo?</AlertDialogTitle>
+            <AlertDialogDescription>The attached image will be deleted from this entry.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={removePhoto}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

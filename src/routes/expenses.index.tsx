@@ -141,6 +141,36 @@ function ExpensesList() {
       >
         <Plus className="h-6 w-6" />
       </Link>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={o => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => pendingDelete != null && onDelete(pendingDelete)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingEdit !== null} onOpenChange={o => !o && setPendingEdit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit this expense?</AlertDialogTitle>
+            <AlertDialogDescription>You'll be taken to the edit screen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const idToEdit = pendingEdit!;
+              setPendingEdit(null);
+              navigate({ to: "/expenses/new", search: { id: idToEdit } });
+            }}>Edit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

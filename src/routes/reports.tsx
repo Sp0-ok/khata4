@@ -3,6 +3,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db, getAllBalances, calcInvoiceTotals, EXPENSE_CATEGORIES } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
@@ -25,32 +27,42 @@ const PIE_COLORS = [
   "oklch(0.5 0.18 270)", "oklch(0.6 0.12 100)",
 ];
 
-type Period = "1m" | "3m" | "6m" | "12m" | "all";
-const PERIOD_MONTHS: Record<Period, number> = { "1m": 1, "3m": 3, "6m": 6, "12m": 12, all: 0 };
-const PERIOD_LABEL: Record<Period, string> = { "1m": "1M", "3m": "3M", "6m": "6M", "12m": "1Y", all: "All" };
+type Period = "1m" | "3m" | "6m" | "12m" | "all" | "custom";
+const PERIOD_MONTHS: Record<Exclude<Period, "custom">, number> = { "1m": 1, "3m": 3, "6m": 6, "12m": 12, all: 0 };
+const PERIOD_LABEL: Record<Period, string> = { "1m": "1M", "3m": "3M", "6m": "6M", "12m": "1Y", all: "All", custom: "Custom" };
 
 function Reports() {
   const { format, symbol } = useCurrency();
   const [view, setView] = useState<"parties" | "business">("parties");
   const [chartKind, setChartKind] = useState<"bars" | "lines">("bars");
   const [period, setPeriod] = useState<Period>("6m");
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const [customFrom, setCustomFrom] = useState(monthAgo);
+  const [customTo, setCustomTo] = useState(today);
 
   const balances = useLiveQuery(() => getAllBalances(), []);
   const txns = useLiveQuery(() => db.transactions.toArray(), []);
   const invoices = useLiveQuery(() => db.invoices.toArray(), []);
   const expenses = useLiveQuery(() => db.expenses.toArray(), []);
 
-  const cutoffTs = useMemo(() => {
-    if (period === "all") return 0;
+  const { cutoffTs, endTs } = useMemo(() => {
+    if (period === "custom") {
+      return {
+        cutoffTs: new Date(customFrom).getTime(),
+        endTs: new Date(customTo).getTime() + 86_399_000,
+      };
+    }
+    if (period === "all") return { cutoffTs: 0, endTs: Infinity };
     const d = new Date();
     d.setMonth(d.getMonth() - (PERIOD_MONTHS[period] - 1));
     d.setDate(1); d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  }, [period]);
+    return { cutoffTs: d.getTime(), endTs: Infinity };
+  }, [period, customFrom, customTo]);
 
-  const fTxns = useMemo(() => (txns || []).filter(t => t.date >= cutoffTs), [txns, cutoffTs]);
-  const fInvoices = useMemo(() => (invoices || []).filter(i => i.date >= cutoffTs), [invoices, cutoffTs]);
-  const fExpenses = useMemo(() => (expenses || []).filter(e => e.date >= cutoffTs), [expenses, cutoffTs]);
+  const fTxns = useMemo(() => (txns || []).filter(t => t.date >= cutoffTs && t.date <= endTs), [txns, cutoffTs, endTs]);
+  const fInvoices = useMemo(() => (invoices || []).filter(i => i.date >= cutoffTs && i.date <= endTs), [invoices, cutoffTs, endTs]);
+  const fExpenses = useMemo(() => (expenses || []).filter(e => e.date >= cutoffTs && e.date <= endTs), [expenses, cutoffTs, endTs]);
 
   const partyTotals = useMemo(() => ({
     received: fTxns.filter(x => x.type === "credit").reduce((s, x) => s + x.amount, 0),
@@ -96,7 +108,11 @@ function Reports() {
   const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   const tickFmt = (v: number) => compact.format(v);
 
-  const periodLabel = period === "all" ? "All time" : `Last ${PERIOD_LABEL[period]}`;
+  const periodLabel = period === "all"
+    ? "All time"
+    : period === "custom"
+    ? `${customFrom} → ${customTo}`
+    : `Last ${PERIOD_LABEL[period]}`;
 
   return (
     <AppShell>
@@ -123,6 +139,19 @@ function Reports() {
             </button>
           ))}
         </div>
+
+        {period === "custom" && (
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">From</Label>
+              <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} max={customTo} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">To</Label>
+              <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} min={customFrom} className="h-9" />
+            </div>
+          </div>
+        )}
 
         <Tabs value={chartKind} onValueChange={v => { tapLight(); setChartKind(v as any); }}>
           <TabsList className="grid w-full grid-cols-2">
@@ -269,7 +298,7 @@ function buildBuckets<T extends { date: number }, B extends Record<string, numbe
   items: T[], period: Period, add: (it: T, b: B) => void, init: B,
 ): (B & { name: string })[] {
   const now = new Date();
-  const months = PERIOD_MONTHS[period];
+  const months = period === "custom" || period === "all" ? 0 : PERIOD_MONTHS[period];
 
   if (period === "1m") {
     // Daily buckets for current month
@@ -289,7 +318,7 @@ function buildBuckets<T extends { date: number }, B extends Record<string, numbe
   }
 
   // Monthly buckets
-  const count = period === "all" ? Math.max(1, monthsSpan(items)) : months;
+  const count = period === "all" || period === "custom" ? Math.max(1, monthsSpan(items)) : months;
   const buckets: (B & { name: string })[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);

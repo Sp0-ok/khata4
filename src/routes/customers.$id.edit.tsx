@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
 import { Avatar } from "./customers.index";
+import { PhoneInput } from "@/components/PhoneInput";
+import { joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/lib/countryCodes";
 
 export const Route = createFileRoute("/customers/$id/edit")({
   head: () => ({ meta: [{ title: "Edit party — Hisaab Kitaab" }] }),
@@ -25,7 +27,8 @@ function EditParty() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneRest, setPhoneRest] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
@@ -36,7 +39,10 @@ function EditParty() {
 
   useEffect(() => {
     if (party && !loaded) {
-      setName(party.name); setPhone(party.phone || ""); setEmail(party.email || "");
+      setName(party.name);
+      const sp = splitPhone(party.phone);
+      setPhoneCode(sp.code); setPhoneRest(sp.rest);
+      setEmail(party.email || "");
       setAddress(party.address || ""); setNotes(party.notes || "");
       setOpening(String(party.openingBalance || 0));
       setPhoto(party.photo); setLoaded(true);
@@ -57,7 +63,7 @@ function EditParty() {
     try {
       await db.parties.update(pid, {
         name: name.trim(),
-        phone: phone.trim() || undefined,
+        phone: joinPhone(phoneCode, phoneRest) || undefined,
         email: email.trim() || undefined,
         address: address.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -96,7 +102,7 @@ function EditParty() {
         </div>
 
         <Field label="Name *"><Input value={name} onChange={e => setName(e.target.value)} required maxLength={80} /></Field>
-        <Field label="Phone"><Input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" maxLength={20} /></Field>
+        <Field label="Phone"><PhoneInput code={phoneCode} rest={phoneRest} onChange={(c, r) => { setPhoneCode(c); setPhoneRest(r); }} /></Field>
         <Field label="Email"><Input value={email} onChange={e => setEmail(e.target.value)} type="email" maxLength={120} /></Field>
         <Field label="Address"><Input value={address} onChange={e => setAddress(e.target.value)} maxLength={200} /></Field>
         <Field label="Opening balance">

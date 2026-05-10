@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
 import { Avatar } from "./customers.index";
+import { PhoneInput } from "@/components/PhoneInput";
+import { joinPhone, DEFAULT_COUNTRY_CODE } from "@/lib/countryCodes";
 
 export const Route = createFileRoute("/customers/new")({
   head: () => ({ meta: [{ title: "Add party — Hisaab Kitaab" }] }),
@@ -19,7 +21,8 @@ export const Route = createFileRoute("/customers/new")({
 function NewParty() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneRest, setPhoneRest] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
@@ -42,7 +45,7 @@ function NewParty() {
     try {
       const now = Date.now();
       const id = await db.parties.add({
-        name: name.trim(), phone: phone.trim() || undefined,
+        name: name.trim(), phone: joinPhone(phoneCode, phoneRest) || undefined,
         email: email.trim() || undefined, address: address.trim() || undefined,
         notes: notes.trim() || undefined, photo,
         openingBalance: parseFloat(opening) || 0,
@@ -83,7 +86,7 @@ function NewParty() {
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ali Traders" required maxLength={80} />
         </Field>
         <Field label="Phone">
-          <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="03xx-xxxxxxx" inputMode="tel" maxLength={20} />
+          <PhoneInput code={phoneCode} rest={phoneRest} onChange={(c, r) => { setPhoneCode(c); setPhoneRest(r); }} placeholder="3xx xxxxxxx" />
         </Field>
         <Field label="Email">
           <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="optional" type="email" maxLength={120} />

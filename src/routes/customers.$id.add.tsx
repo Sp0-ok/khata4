@@ -14,6 +14,7 @@ import { db, type PaymentMethod, type TxnType } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { tapSuccess } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { formatAmountInput, parseAmountInput } from "@/lib/format";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
@@ -29,7 +30,7 @@ function AddTxn() {
   const { id } = Route.useParams();
   const { type } = useSearch({ from: "/customers/$id/add" });
   const navigate = useNavigate();
-  const { symbol } = useCurrency();
+  const { symbol, settings } = useCurrency();
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -39,7 +40,7 @@ function AddTxn() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amt = parseFloat(amount);
+    const amt = parseAmountInput(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     setSaving(true);
     try {
@@ -55,7 +56,7 @@ function AddTxn() {
       await db.parties.update(Number(id), { updatedAt: now });
       tapSuccess();
       toast.success(type === "credit" ? "Receipt recorded" : "Payment recorded");
-      navigate({ to: "/customers/$id", params: { id } });
+      navigate({ to: "/customers/$id", params: { id }, replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed");
     } finally {
@@ -87,8 +88,9 @@ function AddTxn() {
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-semibold opacity-90">{symbol}</span>
             <input
-              autoFocus type="number" inputMode="decimal" step="0.01" min="0"
-              value={amount} onChange={e => setAmount(e.target.value)}
+              autoFocus type="text" inputMode="decimal" autoComplete="off"
+              value={amount}
+              onChange={e => setAmount(formatAmountInput(e.target.value, settings?.currency))}
               placeholder="0"
               className="w-full bg-transparent text-4xl font-bold tabular outline-none placeholder:text-white/60"
             />

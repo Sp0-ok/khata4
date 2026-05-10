@@ -66,19 +66,22 @@ export async function generateStatementPDF(
 
   const cardY = 41, cardH = 26;
   const margin = 14, gap = 4;
-  const cardW = (w - margin * 2 - gap * 4) / 5;
+
+  const cards: { label: string; value: string; color: [number, number, number]; sub: string }[] = [];
+  if (opening !== 0) {
+    cards.push({ label: "Opening Balance", value: formatMoney(Math.abs(opening), currencySymbol), color: opening > 0 ? RED : GREEN, sub: `(on ${fmtDate(firstDate)})` });
+  }
+  cards.push(
+    { label: "Total Debit (-)", value: formatMoney(totalDebit, currencySymbol), color: RED, sub: " " },
+    { label: "Total Credit (+)", value: formatMoney(totalCredit, currencySymbol), color: GREEN, sub: " " },
+    { label: "Net Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
+  );
+
+  const cardW = (w - margin * 2 - gap * (cards.length - 1)) / cards.length;
 
   doc.setDrawColor(220);
   doc.setLineWidth(0.3);
   doc.roundedRect(margin, cardY, w - margin * 2, cardH, 2, 2, "S");
-
-  const cards: { label: string; value: string; color: [number, number, number]; sub: string }[] = [
-    { label: "Opening Balance", value: formatMoney(Math.abs(opening), currencySymbol), color: opening === 0 ? SLATE : opening > 0 ? RED : GREEN, sub: opening === 0 ? "(settled)" : `(on ${fmtDate(firstDate)})` },
-    { label: "Total Debit (-)", value: formatMoney(totalDebit, currencySymbol), color: RED, sub: " " },
-    { label: "Total Credit (+)", value: formatMoney(totalCredit, currencySymbol), color: GREEN, sub: " " },
-    { label: "Net Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
-    { label: "Running Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: `(on ${fmtDate(lastDate)})` },
-  ];
 
   cards.forEach((c, i) => {
     const x = margin + i * (cardW + gap);

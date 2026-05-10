@@ -142,6 +142,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   onboarded: false,
   invoiceWatermark: true,
+  statementWatermark: true,
 };
 
 export const EXPENSE_CATEGORIES = [

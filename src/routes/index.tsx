@@ -60,7 +60,7 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <header className="flex items-start justify-between px-5 pt-7 pb-3">
+      <header className="safe-top flex items-start justify-between px-5 pb-3 pt-2">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
           <h1 className="truncate text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
@@ -180,7 +180,7 @@ function Dashboard() {
           <h2 className="text-sm font-semibold text-muted-foreground">Recent activity</h2>
           <Link to="/customers" className="text-xs font-medium text-primary">View all</Link>
         </div>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
           {recent && recent.length === 0 && (
             <Card className="flex flex-col items-center gap-3 p-8 text-center">
               <div className="rounded-full bg-accent p-3"><TrendingUp className="h-6 w-6 text-primary" /></div>
@@ -195,22 +195,22 @@ function Dashboard() {
             const party = parties?.find(p => p.id === t.partyId);
             return (
               <Link key={t.id} to="/customers/$id" params={{ id: String(t.partyId) }}>
-                <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent/30">
+                <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-accent/30">
                   <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full",
+                    "flex h-11 w-11 items-center justify-center rounded-full",
                     t.type === "credit" ? "bg-[color:var(--credit)]/15 text-[color:var(--credit)]" : "bg-[color:var(--debit)]/15 text-[color:var(--debit)]"
                   )}>
                     {t.type === "credit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold">{party?.name || "Unknown"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{t.note || (t.type === "credit" ? "Received" : "Given")}</p>
                   </div>
                   <div className="text-right">
                     <p className={cn("text-sm font-semibold tabular", t.type === "credit" ? "text-[color:var(--credit)]" : "text-[color:var(--debit)]")}>
                       {format(t.amount)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(t.date).toLocaleDateString()}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(t.date).toLocaleDateString()}</p>
                   </div>
                 </Card>
               </Link>

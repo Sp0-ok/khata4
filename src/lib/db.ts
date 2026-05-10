@@ -28,6 +28,7 @@ export interface Transaction {
   dueDate?: number;
   attachment?: string;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface InvoiceItem {
@@ -80,6 +81,10 @@ export interface Settings {
   onboarded: boolean;
   logo?: string;
   invoiceWatermark?: boolean;
+  /** Where Capacitor saves PDFs / CSV exports. Asked once on first save. */
+  downloadDir?: "documents" | "downloads";
+  /** Default country dial code for new parties (e.g. "+92"). */
+  defaultCountryCode?: string;
 }
 
 class LedgerDB extends Dexie {
@@ -103,11 +108,22 @@ class LedgerDB extends Dexie {
       expenses: "++id, category, date, createdAt",
       settings: "++id",
     }).upgrade(async tx => {
-      // Backfill new settings fields for existing users.
       await tx.table("settings").toCollection().modify((s: any) => {
         if (s.taxPercent == null) s.taxPercent = 0;
         if (!s.invoicePrefix) s.invoicePrefix = "INV-";
         if (s.invoiceCounter == null) s.invoiceCounter = 1;
+      });
+    });
+    // v3: backfill updatedAt on transactions for "last modified" display.
+    this.version(3).stores({
+      parties: "++id, name, type, phone, createdAt, updatedAt",
+      transactions: "++id, partyId, type, date, createdAt, updatedAt",
+      invoices: "++id, number, partyId, date, status, createdAt",
+      expenses: "++id, category, date, createdAt",
+      settings: "++id",
+    }).upgrade(async tx => {
+      await tx.table("transactions").toCollection().modify((t: any) => {
+        if (t.updatedAt == null) t.updatedAt = t.createdAt;
       });
     });
   }
@@ -201,13 +217,17 @@ export const ONBOARDING_CURRENCIES = [
 ];
 
 export const ALL_CURRENCIES = [
+  // Top picks first
   { c: "PKR", s: "Rs", name: "Pakistani Rupee" },
+  { c: "BHD", s: ".د.ب", name: "Bahraini Dinar" },
+  { c: "PHP", s: "₱", name: "Philippine Peso" },
+  { c: "USD", s: "$", name: "US Dollar" },
+  // Rest
   { c: "INR", s: "₹", name: "Indian Rupee" },
   { c: "BDT", s: "৳", name: "Bangladeshi Taka" },
   { c: "LKR", s: "Rs", name: "Sri Lankan Rupee" },
   { c: "NPR", s: "Rs", name: "Nepalese Rupee" },
   { c: "AFN", s: "؋", name: "Afghan Afghani" },
-  { c: "USD", s: "$", name: "US Dollar" },
   { c: "EUR", s: "€", name: "Euro" },
   { c: "GBP", s: "£", name: "British Pound" },
   { c: "CAD", s: "C$", name: "Canadian Dollar" },
@@ -219,13 +239,11 @@ export const ALL_CURRENCIES = [
   { c: "MYR", s: "RM", name: "Malaysian Ringgit" },
   { c: "IDR", s: "Rp", name: "Indonesian Rupiah" },
   { c: "THB", s: "฿", name: "Thai Baht" },
-  { c: "PHP", s: "₱", name: "Philippine Peso" },
   { c: "VND", s: "₫", name: "Vietnamese Dong" },
   { c: "AED", s: "د.إ", name: "UAE Dirham" },
   { c: "SAR", s: "﷼", name: "Saudi Riyal" },
   { c: "QAR", s: "ر.ق", name: "Qatari Riyal" },
   { c: "KWD", s: "د.ك", name: "Kuwaiti Dinar" },
-  { c: "BHD", s: ".د.ب", name: "Bahraini Dinar" },
   { c: "OMR", s: "ر.ع.", name: "Omani Rial" },
   { c: "TRY", s: "₺", name: "Turkish Lira" },
   { c: "EGP", s: "E£", name: "Egyptian Pound" },

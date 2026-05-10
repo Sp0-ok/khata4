@@ -166,8 +166,16 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
+    /* Suppress the Android WebView long-press URL/context popup. */
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+
+  /* Default: nothing is selectable on touch (prevents the URL preview popup). */
+  a, button, [role="button"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  /* But keep text inputs usable. */
+  input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
   /* Hide number-input spin buttons globally */
   input[type="number"]::-webkit-outer-spin-button,
@@ -182,5 +190,6 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
   .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+  .safe-top    { padding-top:    max(env(safe-area-inset-top), 0.5rem); }
   .tabular { font-variant-numeric: tabular-nums; }
 }

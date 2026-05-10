@@ -15,9 +15,17 @@ function imgFmt(dataUrl: string): "JPEG" | "PNG" {
   return dataUrl.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
 }
 
-export async function generateStatementPDF(party: Party, businessName: string, currencySymbol: string) {
-  const txns = (await db.transactions.where("partyId").equals(party.id!).toArray())
+export async function generateStatementPDF(
+  party: Party,
+  businessName: string,
+  currencySymbol: string,
+  range?: { from: number; to: number },
+) {
+  const all = (await db.transactions.where("partyId").equals(party.id!).toArray())
     .sort((a, b) => a.date - b.date);
+  const txns = range
+    ? all.filter(t => t.date >= range.from && t.date <= range.to)
+    : all;
 
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
@@ -168,8 +176,8 @@ export async function generateStatementPDF(party: Party, businessName: string, c
   return doc;
 }
 
-export async function downloadStatement(party: Party, businessName: string, symbol: string) {
-  const doc = await generateStatementPDF(party, businessName, symbol);
+export async function downloadStatement(party: Party, businessName: string, symbol: string, range?: { from: number; to: number }) {
+  const doc = await generateStatementPDF(party, businessName, symbol, range);
   doc.save(`${party.name.replace(/\s+/g, "_")}_statement.pdf`);
 }
 

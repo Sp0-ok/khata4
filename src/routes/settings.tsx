@@ -45,7 +45,6 @@ function SettingsPage() {
 
   const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
-    if (f.size > 2 * 1024 * 1024) { toast.error("Image too large (max 2MB)"); e.target.value = ""; return; }
     try {
       const dataUrl = await downscaleImage(f, 256);
       await updateSettings({ logo: dataUrl });

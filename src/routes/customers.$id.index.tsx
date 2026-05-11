@@ -509,6 +509,7 @@ function StatementDialog({
       };
       const doc = await generateStatementPDF(party, settings.businessName, symbol, range, {
         watermark: settings.statementWatermark !== false,
+        currency: settings.currency,
       });
       const blob = doc.output("blob");
       const tag = full ? "full" : `${from}_${to}`;

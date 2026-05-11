@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
+import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings, pdfSymbol } from "./db";
 
 const TEAL: [number, number, number] = [13, 148, 136];
 const RED: [number, number, number] = [220, 38, 38];
@@ -26,8 +26,11 @@ export async function generateStatementPDF(
   businessName: string,
   currencySymbol: string,
   range?: { from: number; to: number },
-  opts?: { watermark?: boolean },
+  opts?: { watermark?: boolean; currency?: string },
 ) {
+  const sym = pdfSymbol(opts?.currency, currencySymbol);
+  const cur = opts?.currency;
+  const fmt = (n: number) => formatMoney(n, sym, cur);
   const all = (await db.transactions.where("partyId").equals(party.id!).toArray())
     .sort((a, b) => a.createdAt - b.createdAt);
   const txns = range

@@ -200,7 +200,9 @@ export async function downloadStatement(party: Party, businessName: string, symb
 
 export async function generateInvoicePDF(inv: Invoice) {
   const s = await getSettings();
-  const sym = s.currencySymbol;
+  const sym = pdfSymbol(s.currency, s.currencySymbol);
+  const cur = s.currency;
+  const fmt = (n: number) => formatMoney(n, sym, cur);
   const { subtotal, tax, total } = calcInvoiceTotals(inv);
 
   const doc = new jsPDF();

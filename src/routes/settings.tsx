@@ -15,6 +15,7 @@ import { db, getSettings, updateSettings, ALL_CURRENCIES } from "@/lib/db";
 import { downscaleImage } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { AccountCard } from "@/components/AccountCard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

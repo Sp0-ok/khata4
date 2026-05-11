@@ -250,6 +250,31 @@ function SettingsPage() {
             checked={settings.statementWatermark !== false}
             onChange={(v) => updateSettings({ statementWatermark: v })}
           />
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background/50 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Invoice counter</p>
+              <p className="text-[11px] text-muted-foreground">Next invoice: {settings.invoicePrefix || "INV-"}{String(settings.invoiceCounter || 1).padStart(4, "0")}</p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 shrink-0 text-destructive">Reset</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset invoice counter?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The next invoice number will start again at 0001. Existing invoices keep their numbers — but new ones may collide if you've already used those numbers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={async () => { await updateSettings({ invoiceCounter: 1 }); toast.success("Invoice counter reset to 0001"); }}>
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </Card>
 
         <Card className="space-y-3 rounded-2xl p-4">

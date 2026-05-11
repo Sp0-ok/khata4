@@ -112,17 +112,26 @@ function ExpensesList() {
           </SelectContent>
         </Select>
 
-        <Select value={period} onValueChange={v => setPeriod(v as typeof period)}>
-          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All time</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">Last 7 days</SelectItem>
-            <SelectItem value="month">This month</SelectItem>
-            <SelectItem value="lastMonth">Last month</SelectItem>
-            <SelectItem value="year">This year</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-1 rounded-xl bg-muted p-1">
+          {([
+            ["today", "Today"],
+            ["week", "7D"],
+            ["month", "Month"],
+            ["lastMonth", "Last M"],
+            ["year", "Year"],
+            ["all", "All"],
+          ] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setPeriod(val)}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                period === val ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {period !== "all" && (
           <p className="px-1 text-[11px] text-muted-foreground">

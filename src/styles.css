@@ -89,6 +89,9 @@
 
   --gradient-primary: linear-gradient(135deg, oklch(0.62 0.15 170), oklch(0.78 0.16 165));
   --gradient-surface: linear-gradient(180deg, oklch(0.99 0.005 160), oklch(0.97 0.012 175));
+  /* Ledger gradients — kept identical in light & dark for brand consistency. */
+  --gradient-credit: linear-gradient(135deg, #2DD4BF 0%, #0E7490 100%);
+  --gradient-debit:  linear-gradient(135deg, #FB7185 0%, #E11D48 100%);
 
   --shadow-soft: 0 2px 8px -2px color-mix(in oklab, oklch(0.55 0.13 170) 12%, transparent);
   --shadow-elevated: 0 12px 32px -10px color-mix(in oklab, oklch(0.55 0.13 170) 25%, transparent);
@@ -143,6 +146,8 @@
 
   --gradient-primary: linear-gradient(135deg, oklch(0.52 0.1 195), oklch(0.72 0.12 172));
   --gradient-surface: linear-gradient(180deg, oklch(0.16 0.006 240), oklch(0.19 0.008 235));
+  --gradient-credit: linear-gradient(135deg, #2DD4BF 0%, #0E7490 100%);
+  --gradient-debit:  linear-gradient(135deg, #FB7185 0%, #E11D48 100%);
 
   --shadow-soft: 0 2px 8px -2px oklch(0 0 0 / 40%);
   --shadow-elevated: 0 12px 32px -10px oklch(0 0 0 / 60%);

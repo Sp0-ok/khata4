@@ -139,7 +139,7 @@ function AddTxn() {
               </button>
             </div>
           ) : (
-            <Button type="button" variant="outline" size="sm" onClick={() => photoRef.current?.click()}>
+            <Button type="button" variant="outline" size="sm" className="whitespace-nowrap" onClick={() => photoRef.current?.click()}>
               <ImagePlus className="mr-2 h-4 w-4" /> Add photo
             </Button>
           )}

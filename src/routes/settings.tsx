@@ -404,8 +404,8 @@ function ToggleRow({
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="truncate text-sm font-medium">{title}</p>
-        {subtitle && <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>}
+        <p className="text-sm font-medium leading-snug">{title}</p>
+        {subtitle && <p className="text-[11px] leading-snug text-muted-foreground">{subtitle}</p>}
       </div>
       <span
         className={cn(

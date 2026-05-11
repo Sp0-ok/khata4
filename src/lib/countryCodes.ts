@@ -1,12 +1,14 @@
 // Country dial codes — top 4 first (PK, BH, PH, US), then the rest alphabetised.
 export type CountryCode = { code: string; iso: string; name: string };
 
-export const COUNTRY_CODES: CountryCode[] = [
+const TOP: CountryCode[] = [
   { code: "+92",  iso: "PK", name: "Pakistan" },
   { code: "+973", iso: "BH", name: "Bahrain" },
   { code: "+63",  iso: "PH", name: "Philippines" },
   { code: "+1",   iso: "US", name: "United States" },
+];
 
+const REST: CountryCode[] = [
   { code: "+93",  iso: "AF", name: "Afghanistan" },
   { code: "+61",  iso: "AU", name: "Australia" },
   { code: "+880", iso: "BD", name: "Bangladesh" },
@@ -47,7 +49,9 @@ export const COUNTRY_CODES: CountryCode[] = [
   { code: "+971", iso: "AE", name: "UAE" },
   { code: "+44",  iso: "GB", name: "United Kingdom" },
   { code: "+84",  iso: "VN", name: "Vietnam" },
-];
+].sort((a, b) => Number(a.code.slice(1)) - Number(b.code.slice(1)));
+
+export const COUNTRY_CODES: CountryCode[] = [...TOP, ...REST];
 
 const SORTED_CODES = [...new Set(COUNTRY_CODES.map(c => c.code))]
   .sort((a, b) => b.length - a.length); // longest first so "+973" matches before "+9"

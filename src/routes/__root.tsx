@@ -12,6 +12,11 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { SaveFolderPicker } from "@/components/SaveFolderPicker";
+import { useAutoSync } from "@/lib/sync";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function NotFoundComponent() {
   return (
@@ -117,11 +122,36 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RoutePreloader />
+        <SyncMount />
         <Outlet />
         <Toaster position="top-center" />
         <SaveFolderPicker />
       </ThemeProvider>
     </QueryClientProvider>
+  );
+}
+
+function SyncMount() {
+  const { pendingDecision, resolveDecision } = useAutoSync();
+  const open = !!pendingDecision;
+  const when = pendingDecision ? new Date(pendingDecision.cloudUpdatedAt).toLocaleString() : "";
+  const dev = pendingDecision?.cloudDevice || "another device";
+  return (
+    <AlertDialog open={open} onOpenChange={(o) => { if (!o) resolveDecision("dismiss"); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Restore cloud backup?</AlertDialogTitle>
+          <AlertDialogDescription>
+            We found a newer backup in your account from <strong>{dev}</strong> ({when}).
+            Restoring will replace the data on this device. Keeping local will overwrite the cloud on the next change.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => resolveDecision("overwrite")}>Keep local</AlertDialogCancel>
+          <AlertDialogAction onClick={() => resolveDecision("restore")}>Restore from cloud</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

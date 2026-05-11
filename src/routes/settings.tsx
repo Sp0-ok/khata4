@@ -173,6 +173,8 @@ function SettingsPage() {
       />
 
       <div className="space-y-4 px-4 pt-4">
+        <AccountCard />
+
         <Card className="space-y-3 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-sm font-semibold"><Building2 className="h-4 w-4 text-primary" /> Business</div>
 

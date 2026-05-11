@@ -79,12 +79,12 @@ export async function generateStatementPDF(
 
   const cards: { label: string; value: string; color: [number, number, number]; sub: string }[] = [];
   if (opening !== 0) {
-    cards.push({ label: "Opening Balance", value: formatMoney(Math.abs(opening), currencySymbol), color: opening > 0 ? RED : GREEN, sub: `(on ${fmtDate(firstDate)})` });
+    cards.push({ label: "Opening Balance", value: fmt(Math.abs(opening)), color: opening > 0 ? RED : GREEN, sub: `(on ${fmtDate(firstDate)})` });
   }
   cards.push(
-    { label: "Total Debit (-)", value: formatMoney(totalDebit, currencySymbol), color: RED, sub: " " },
-    { label: "Total Credit (+)", value: formatMoney(totalCredit, currencySymbol), color: GREEN, sub: " " },
-    { label: "Net Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
+    { label: "Total Debit (-)", value: fmt(totalDebit), color: RED, sub: " " },
+    { label: "Total Credit (+)", value: fmt(totalCredit), color: GREEN, sub: " " },
+    { label: "Net Balance", value: fmt(Math.abs(net)), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
   );
 
   const cardW = (w - margin * 2 - gap * (cards.length - 1)) / cards.length;
@@ -124,17 +124,17 @@ export async function generateStatementPDF(
   let running = opening;
   const body: any[] = txns.map((t, idx) => {
     running += t.type === "debit" ? t.amount : -t.amount;
-    const balanceTxt = formatMoney(Math.abs(running), currencySymbol);
+    const balanceTxt = fmt(Math.abs(running));
     return [
       { content: String(idx + 1), styles: { halign: "center" } },
       { content: fmtDateTime(t.createdAt), styles: { textColor: 60, fontSize: 8 } },
       { content: t.note || (t.type === "credit" ? "Received" : "Given"), styles: { textColor: 30 } },
       {
-        content: t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "",
+        content: t.type === "debit" ? fmt(t.amount) : "",
         styles: { fillColor: t.type === "debit" ? RED_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
       },
       {
-        content: t.type === "credit" ? formatMoney(t.amount, currencySymbol) : "",
+        content: t.type === "credit" ? fmt(t.amount) : "",
         styles: { fillColor: t.type === "credit" ? GREEN_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
       },
       {
@@ -164,9 +164,9 @@ export async function generateStatementPDF(
     theme: "grid",
     foot: [[
       { content: "GRAND TOTAL", colSpan: 3, styles: { halign: "left" } },
-      { content: formatMoney(totalDebit, currencySymbol), styles: { halign: "right", textColor: RED } },
-      { content: formatMoney(totalCredit, currencySymbol), styles: { halign: "right", textColor: GREEN } },
-      { content: formatMoney(Math.abs(net), currencySymbol), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
+      { content: fmt(totalDebit), styles: { halign: "right", textColor: RED } },
+      { content: fmt(totalCredit), styles: { halign: "right", textColor: GREEN } },
+      { content: fmt(Math.abs(net)), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
     ]],
     didDrawCell: (data) => {
       // Draw a thick top border across the foot row to visually separate Grand Total.

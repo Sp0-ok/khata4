@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings } from "./db";
+import { db, type Party, type Invoice, formatMoney, calcInvoiceTotals, getSettings, pdfSymbol } from "./db";
 
 const TEAL: [number, number, number] = [13, 148, 136];
 const RED: [number, number, number] = [220, 38, 38];
@@ -26,8 +26,11 @@ export async function generateStatementPDF(
   businessName: string,
   currencySymbol: string,
   range?: { from: number; to: number },
-  opts?: { watermark?: boolean },
+  opts?: { watermark?: boolean; currency?: string },
 ) {
+  const sym = pdfSymbol(opts?.currency, currencySymbol);
+  const cur = opts?.currency;
+  const fmt = (n: number) => formatMoney(n, sym, cur);
   const all = (await db.transactions.where("partyId").equals(party.id!).toArray())
     .sort((a, b) => a.createdAt - b.createdAt);
   const txns = range
@@ -76,12 +79,12 @@ export async function generateStatementPDF(
 
   const cards: { label: string; value: string; color: [number, number, number]; sub: string }[] = [];
   if (opening !== 0) {
-    cards.push({ label: "Opening Balance", value: formatMoney(Math.abs(opening), currencySymbol), color: opening > 0 ? RED : GREEN, sub: `(on ${fmtDate(firstDate)})` });
+    cards.push({ label: "Opening Balance", value: fmt(Math.abs(opening)), color: opening > 0 ? RED : GREEN, sub: `(on ${fmtDate(firstDate)})` });
   }
   cards.push(
-    { label: "Total Debit (-)", value: formatMoney(totalDebit, currencySymbol), color: RED, sub: " " },
-    { label: "Total Credit (+)", value: formatMoney(totalCredit, currencySymbol), color: GREEN, sub: " " },
-    { label: "Net Balance", value: formatMoney(Math.abs(net), currencySymbol), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
+    { label: "Total Debit (-)", value: fmt(totalDebit), color: RED, sub: " " },
+    { label: "Total Credit (+)", value: fmt(totalCredit), color: GREEN, sub: " " },
+    { label: "Net Balance", value: fmt(Math.abs(net)), color: net === 0 ? SLATE : net > 0 ? RED : GREEN, sub: net === 0 ? "(settled)" : `(${partyVerb})` },
   );
 
   const cardW = (w - margin * 2 - gap * (cards.length - 1)) / cards.length;
@@ -121,17 +124,17 @@ export async function generateStatementPDF(
   let running = opening;
   const body: any[] = txns.map((t, idx) => {
     running += t.type === "debit" ? t.amount : -t.amount;
-    const balanceTxt = formatMoney(Math.abs(running), currencySymbol);
+    const balanceTxt = fmt(Math.abs(running));
     return [
       { content: String(idx + 1), styles: { halign: "center" } },
       { content: fmtDateTime(t.createdAt), styles: { textColor: 60, fontSize: 8 } },
       { content: t.note || (t.type === "credit" ? "Received" : "Given"), styles: { textColor: 30 } },
       {
-        content: t.type === "debit" ? formatMoney(t.amount, currencySymbol) : "",
+        content: t.type === "debit" ? fmt(t.amount) : "",
         styles: { fillColor: t.type === "debit" ? RED_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
       },
       {
-        content: t.type === "credit" ? formatMoney(t.amount, currencySymbol) : "",
+        content: t.type === "credit" ? fmt(t.amount) : "",
         styles: { fillColor: t.type === "credit" ? GREEN_TINT : [255, 255, 255], halign: "right", fontStyle: "bold", textColor: 20 },
       },
       {
@@ -161,9 +164,9 @@ export async function generateStatementPDF(
     theme: "grid",
     foot: [[
       { content: "GRAND TOTAL", colSpan: 3, styles: { halign: "left" } },
-      { content: formatMoney(totalDebit, currencySymbol), styles: { halign: "right", textColor: RED } },
-      { content: formatMoney(totalCredit, currencySymbol), styles: { halign: "right", textColor: GREEN } },
-      { content: formatMoney(Math.abs(net), currencySymbol), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
+      { content: fmt(totalDebit), styles: { halign: "right", textColor: RED } },
+      { content: fmt(totalCredit), styles: { halign: "right", textColor: GREEN } },
+      { content: fmt(Math.abs(net)), styles: { halign: "right", textColor: net > 0 ? RED : net < 0 ? GREEN : SLATE } },
     ]],
     didDrawCell: (data) => {
       // Draw a thick top border across the foot row to visually separate Grand Total.
@@ -197,7 +200,9 @@ export async function downloadStatement(party: Party, businessName: string, symb
 
 export async function generateInvoicePDF(inv: Invoice) {
   const s = await getSettings();
-  const sym = s.currencySymbol;
+  const sym = pdfSymbol(s.currency, s.currencySymbol);
+  const cur = s.currency;
+  const fmt = (n: number) => formatMoney(n, sym, cur);
   const { subtotal, tax, total } = calcInvoiceTotals(inv);
 
   const doc = new jsPDF();
@@ -239,7 +244,7 @@ export async function generateInvoicePDF(inv: Invoice) {
     head: [["#", "Item", "Qty", "Price", "Amount"]],
     body: inv.items.map((it, i) => [
       String(i + 1), it.name, String(it.qty),
-      formatMoney(it.price, sym), formatMoney(it.qty * it.price, sym),
+      fmt(it.price), fmt(it.qty * it.price),
     ]),
     headStyles: { fillColor: TEAL, textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 9 },
@@ -252,26 +257,26 @@ export async function generateInvoicePDF(inv: Invoice) {
   const rightX = w - 14;
   const labelX = w - 60;
   doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
-  doc.text("Subtotal", labelX, y); doc.text(formatMoney(subtotal, sym), rightX, y, { align: "right" });
+  doc.text("Subtotal", labelX, y); doc.text(fmt(subtotal), rightX, y, { align: "right" });
   y += 6;
   if (inv.discount > 0) {
-    doc.text("Discount", labelX, y); doc.text(`- ${formatMoney(inv.discount, sym)}`, rightX, y, { align: "right" });
+    doc.text("Discount", labelX, y); doc.text(`- ${fmt(inv.discount)}`, rightX, y, { align: "right" });
     y += 6;
   }
   if (inv.taxPercent > 0) {
-    doc.text(`Tax (${inv.taxPercent}%)`, labelX, y); doc.text(formatMoney(tax, sym), rightX, y, { align: "right" });
+    doc.text(`Tax (${inv.taxPercent}%)`, labelX, y); doc.text(fmt(tax), rightX, y, { align: "right" });
     y += 6;
   }
   doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(30);
-  doc.text("Total", labelX, y + 2); doc.text(formatMoney(total, sym), rightX, y + 2, { align: "right" });
+  doc.text("Total", labelX, y + 2); doc.text(fmt(total), rightX, y + 2, { align: "right" });
 
   if (inv.paidAmount > 0) {
     y += 10;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(80);
-    doc.text("Paid", labelX, y); doc.text(formatMoney(inv.paidAmount, sym), rightX, y, { align: "right" });
+    doc.text("Paid", labelX, y); doc.text(fmt(inv.paidAmount), rightX, y, { align: "right" });
     y += 6;
     doc.setFont("helvetica", "bold"); doc.setTextColor(total - inv.paidAmount > 0 ? 200 : 30, 0, 0);
-    doc.text("Balance Due", labelX, y); doc.text(formatMoney(total - inv.paidAmount, sym), rightX, y, { align: "right" });
+    doc.text("Balance Due", labelX, y); doc.text(fmt(total - inv.paidAmount), rightX, y, { align: "right" });
   }
 
   if (inv.notes) {

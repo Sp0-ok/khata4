@@ -91,6 +91,28 @@ function RootComponent() {
     document.addEventListener("contextmenu", stop);
     return () => document.removeEventListener("contextmenu", stop);
   }, []);
+
+  // Native Android back button: exit if at a top-level tab, otherwise go back.
+  useEffect(() => {
+    const cap = (window as any).Capacitor;
+    if (!cap?.isNativePlatform?.()) return;
+    const TOP = new Set(["/", "/customers", "/invoices", "/expenses", "/reports", "/settings"]);
+    let sub: { remove: () => void } | undefined;
+    let cancelled = false;
+    import("@capacitor/app").then(({ App }) => {
+      if (cancelled) return;
+      App.addListener("backButton", () => {
+        const path = window.location.pathname.replace(/\/$/, "") || "/";
+        if (TOP.has(path)) {
+          App.exitApp();
+        } else {
+          window.history.back();
+        }
+      }).then(s => { sub = s; });
+    }).catch(() => undefined);
+    return () => { cancelled = true; sub?.remove?.(); };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

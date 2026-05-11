@@ -46,6 +46,7 @@ function InvoiceDetail() {
     [inv?.partyId],
   );
   const [payAmt, setPayAmt] = useState("");
+  const [shake, setShake] = useState(false);
 
   if (inv === undefined) return <AppShell><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
   if (!inv) return <AppShell><div className="p-6">Invoice not found.</div></AppShell>;
@@ -58,9 +59,22 @@ function InvoiceDetail() {
     toast.success(`Marked ${status}`);
   };
 
+  const onPayChange = (v: string) => {
+    const n = parseFloat(v);
+    if (Number.isFinite(n) && n > due) {
+      setPayAmt(format(due));
+      setShake(true);
+      window.setTimeout(() => setShake(false), 400);
+      toast.error(`Max ${format(due)}`);
+      return;
+    }
+    setPayAmt(v);
+  };
+
   const recordPayment = async () => {
-    const amt = parseFloat(payAmt);
+    const amt = parseFloat(payAmt.replace(/,/g, ""));
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    if (amt > due) return toast.error(`Max ${format(due)}`);
     const newPaid = (inv.paidAmount || 0) + amt;
     const status: InvoiceStatus = newPaid >= totals.total ? "paid" : "partial";
     await db.invoices.update(iid, { paidAmount: newPaid, status });
@@ -194,13 +208,13 @@ function InvoiceDetail() {
       {due > 0 && (
         <section className="px-4 pt-4">
           <Card className="space-y-2 rounded-2xl p-3">
-            <Label className="text-xs text-muted-foreground">Record payment</Label>
-            <div className="flex gap-2">
-              <Input inputMode="decimal" type="number" step="0.01" min="0"
+            <Label className="text-xs text-muted-foreground">Record payment (max {format(due)})</Label>
+            <motion.div className="flex gap-2" animate={shake ? { x: [-6, 6, -4, 4, 0] } : { x: 0 }} transition={{ duration: 0.35 }}>
+              <Input inputMode="decimal" type="number" step="0.01" min="0" max={due}
                 placeholder={`Amount (max ${format(due)})`}
-                value={payAmt} onChange={e => setPayAmt(e.target.value)} />
+                value={payAmt} onChange={e => onPayChange(e.target.value)} />
               <Button onClick={recordPayment} className="shrink-0">Add</Button>
-            </div>
+            </motion.div>
           </Card>
         </section>
       )}

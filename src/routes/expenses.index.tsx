@@ -28,6 +28,7 @@ function ExpensesList() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
+  const [period, setPeriod] = useState<"all" | "today" | "week" | "month" | "lastMonth" | "year">("all");
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const [pendingEdit, setPendingEdit] = useState<number | null>(null);
   const expenses = useLiveQuery(
@@ -35,21 +36,46 @@ function ExpensesList() {
     [],
   );
 
+  const range = useMemo(() => {
+    const now = new Date();
+    const startDay = new Date(now); startDay.setHours(0, 0, 0, 0);
+    if (period === "today") return { from: startDay.getTime(), to: Infinity };
+    if (period === "week") {
+      const d = new Date(startDay); d.setDate(d.getDate() - 6);
+      return { from: d.getTime(), to: Infinity };
+    }
+    if (period === "month") {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: d.getTime(), to: Infinity };
+    }
+    if (period === "lastMonth") {
+      const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+      const to = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 1;
+      return { from, to };
+    }
+    if (period === "year") {
+      return { from: new Date(now.getFullYear(), 0, 1).getTime(), to: Infinity };
+    }
+    return { from: -Infinity, to: Infinity };
+  }, [period]);
+
   const filtered = useMemo(() => {
     if (!expenses) return [];
     return expenses
+      .filter(e => e.date >= range.from && e.date <= range.to)
       .filter(e => cat === "all" || e.category === cat)
       .filter(e => !q ||
         e.title.toLowerCase().includes(q.toLowerCase()) ||
         (e.vendor || "").toLowerCase().includes(q.toLowerCase()),
       );
-  }, [expenses, cat, q]);
+  }, [expenses, cat, q, range]);
 
   const monthStart = useMemo(() => {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime();
   }, []);
   const totalMonth = (expenses || []).filter(e => e.date >= monthStart).reduce((s, e) => s + e.amount, 0);
   const totalAll = (expenses || []).reduce((s, e) => s + e.amount, 0);
+  const totalFiltered = filtered.reduce((s, e) => s + e.amount, 0);
 
   const onDelete = async (id: number) => {
     await db.expenses.delete(id);
@@ -85,6 +111,24 @@ function ExpensesList() {
             {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
+
+        <Select value={period} onValueChange={v => setPeriod(v as typeof period)}>
+          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">Last 7 days</SelectItem>
+            <SelectItem value="month">This month</SelectItem>
+            <SelectItem value="lastMonth">Last month</SelectItem>
+            <SelectItem value="year">This year</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {period !== "all" && (
+          <p className="px-1 text-[11px] text-muted-foreground">
+            Showing {filtered.length} expense{filtered.length === 1 ? "" : "s"} · {format(totalFiltered)}
+          </p>
+        )}
       </div>
 
       <ul className="mt-3 space-y-2 px-4">

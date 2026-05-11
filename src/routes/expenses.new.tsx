@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
 import { db, EXPENSE_CATEGORIES, type PaymentMethod } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
 import { formatAmountInput, parseAmountInput } from "@/lib/format";
+import { downscaleImage } from "@/lib/image";
 
 const methods: PaymentMethod[] = ["cash", "bank", "easypaisa", "jazzcash", "card", "cheque", "other"];
 
@@ -35,7 +36,17 @@ function NewExpense() {
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
+    try { setPhoto(await downscaleImage(f, 1024)); }
+    catch (err: any) { toast.error(err.message || "Could not load image"); }
+    finally { e.target.value = ""; }
+  };
 
   useEffect(() => {
     if (!isEdit) return;
@@ -50,6 +61,7 @@ function NewExpense() {
       setVendor(e.vendor || ""); setMethod(e.method);
       setDate(new Date(e.date).toISOString().slice(0, 10));
       setNotes(e.notes || "");
+      setPhoto(e.attachment);
     });
   }, [isEdit, editId, navigate]);
 
@@ -71,6 +83,7 @@ function NewExpense() {
         method,
         date: new Date(date).getTime(),
         notes: notes.trim() || undefined,
+        attachment: photo,
       };
       if (isEdit) {
         await db.expenses.update(editId!, payload);
@@ -142,6 +155,24 @@ function NewExpense() {
         </Field>
         <Field label="Notes">
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} rows={3} />
+        </Field>
+
+        <Field label="Photo / Receipt">
+          {photo ? (
+            <div className="relative inline-block">
+              <img src={photo} alt="Receipt" className="max-h-44 rounded-xl border border-border object-contain" />
+              <button type="button" onClick={() => setPhoto(undefined)}
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                aria-label="Remove photo">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="whitespace-nowrap" onClick={() => photoRef.current?.click()}>
+              <ImagePlus className="mr-2 h-4 w-4" /> Add photo
+            </Button>
+          )}
+          <input ref={photoRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
         </Field>
 
         <div className="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 safe-bottom">

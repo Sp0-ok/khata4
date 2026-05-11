@@ -354,7 +354,6 @@ function TxnDetailDialog({
 
   const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); return; }
     try {
       const dataUrl = await downscaleImage(f, 1024);
       await db.transactions.update(txn.id!, { attachment: dataUrl, updatedAt: Date.now() });

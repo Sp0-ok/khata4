@@ -42,7 +42,6 @@ function NewExpense() {
 
   const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
     try { setPhoto(await downscaleImage(f, 1024)); }
     catch (err: any) { toast.error(err.message || "Could not load image"); }
     finally { e.target.value = ""; }

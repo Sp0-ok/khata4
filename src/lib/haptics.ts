@@ -28,9 +28,11 @@ export function haptic(pattern: number | number[] = 10) {
   void getCap().then((mod) => {
     if (!mod) return;
     try {
+      const cap = (window as any).Capacitor;
+      if (!cap?.isNativePlatform?.()) return;
       const ms = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : pattern;
       const style = ms < 12 ? mod.ImpactStyle.Light : ms < 25 ? mod.ImpactStyle.Medium : mod.ImpactStyle.Heavy;
-      mod.Haptics.impact({ style });
+      void mod.Haptics.impact({ style }).catch(() => undefined);
     } catch {
       /* ignore */
     }

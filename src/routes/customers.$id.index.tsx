@@ -198,9 +198,7 @@ function CustomerDetail() {
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
           style={{
-            background: owesYou
-              ? "linear-gradient(135deg, var(--debit), oklch(0.5 0.18 25))"
-              : "var(--gradient-primary)",
+            background: owesYou ? "var(--gradient-debit)" : "var(--gradient-credit)",
           }}
         >
           <div className="flex items-center gap-3">

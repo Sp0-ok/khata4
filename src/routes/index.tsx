@@ -126,9 +126,7 @@ function Dashboard() {
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
           style={{
-            background: net < 0
-              ? "linear-gradient(135deg, var(--debit), oklch(0.5 0.18 25))"
-              : "var(--gradient-primary)",
+            background: net < 0 ? "var(--gradient-debit)" : "var(--gradient-credit)",
           }}
         >
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />

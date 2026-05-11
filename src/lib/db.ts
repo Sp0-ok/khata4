@@ -62,6 +62,7 @@ export interface Expense {
   method: PaymentMethod;
   date: number;
   notes?: string;
+  attachment?: string;
   createdAt: number;
 }
 
@@ -206,9 +207,18 @@ export const nextInvoiceNumber = async (): Promise<string> => {
   return `${s.invoicePrefix || "INV-"}${num}`;
 };
 
-export const formatMoney = (n: number, symbol = "Rs") => {
+const INDIAN_GROUP = new Set(["PKR", "INR", "BDT"]);
+export const formatMoney = (n: number, symbol = "Rs", currency?: string) => {
   const abs = Math.abs(n);
-  return `${symbol} ${abs.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const locale = currency && INDIAN_GROUP.has(currency.toUpperCase()) ? "en-IN" : "en-US";
+  return `${symbol} ${abs.toLocaleString(locale, { maximumFractionDigits: 2 })}`;
+};
+
+/** jsPDF helvetica only renders WinAnsi (Latin-1). Fall back to currency code
+ *  for symbols that use Arabic / Devanagari / extended-currency glyphs. */
+export const pdfSymbol = (currency?: string, symbol?: string) => {
+  if (symbol && /^[\x20-\xFF]*$/.test(symbol)) return symbol;
+  return currency || "";
 };
 
 export const ONBOARDING_CURRENCIES = [

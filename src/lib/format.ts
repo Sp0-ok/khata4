@@ -1,8 +1,8 @@
 // Locale-aware amount formatting for live input.
-// PKR / INR / BDT / NPR / LKR use Indian grouping (1,00,000).
+// PKR / INR / BDT use Indian grouping (1,00,000).
 // Everything else uses Western grouping (100,000).
 
-const INDIAN = new Set(["PKR", "INR", "BDT", "NPR", "LKR"]);
+const INDIAN = new Set(["PKR", "INR", "BDT"]);
 
 export function isIndianGrouping(currency?: string) {
   return !!currency && INDIAN.has(currency.toUpperCase());

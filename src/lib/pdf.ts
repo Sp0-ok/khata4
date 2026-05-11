@@ -244,7 +244,7 @@ export async function generateInvoicePDF(inv: Invoice) {
     head: [["#", "Item", "Qty", "Price", "Amount"]],
     body: inv.items.map((it, i) => [
       String(i + 1), it.name, String(it.qty),
-      formatMoney(it.price, sym), formatMoney(it.qty * it.price, sym),
+      fmt(it.price), fmt(it.qty * it.price),
     ]),
     headStyles: { fillColor: TEAL, textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 9 },
@@ -257,26 +257,26 @@ export async function generateInvoicePDF(inv: Invoice) {
   const rightX = w - 14;
   const labelX = w - 60;
   doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
-  doc.text("Subtotal", labelX, y); doc.text(formatMoney(subtotal, sym), rightX, y, { align: "right" });
+  doc.text("Subtotal", labelX, y); doc.text(fmt(subtotal), rightX, y, { align: "right" });
   y += 6;
   if (inv.discount > 0) {
-    doc.text("Discount", labelX, y); doc.text(`- ${formatMoney(inv.discount, sym)}`, rightX, y, { align: "right" });
+    doc.text("Discount", labelX, y); doc.text(`- ${fmt(inv.discount)}`, rightX, y, { align: "right" });
     y += 6;
   }
   if (inv.taxPercent > 0) {
-    doc.text(`Tax (${inv.taxPercent}%)`, labelX, y); doc.text(formatMoney(tax, sym), rightX, y, { align: "right" });
+    doc.text(`Tax (${inv.taxPercent}%)`, labelX, y); doc.text(fmt(tax), rightX, y, { align: "right" });
     y += 6;
   }
   doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(30);
-  doc.text("Total", labelX, y + 2); doc.text(formatMoney(total, sym), rightX, y + 2, { align: "right" });
+  doc.text("Total", labelX, y + 2); doc.text(fmt(total), rightX, y + 2, { align: "right" });
 
   if (inv.paidAmount > 0) {
     y += 10;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(80);
-    doc.text("Paid", labelX, y); doc.text(formatMoney(inv.paidAmount, sym), rightX, y, { align: "right" });
+    doc.text("Paid", labelX, y); doc.text(fmt(inv.paidAmount), rightX, y, { align: "right" });
     y += 6;
     doc.setFont("helvetica", "bold"); doc.setTextColor(total - inv.paidAmount > 0 ? 200 : 30, 0, 0);
-    doc.text("Balance Due", labelX, y); doc.text(formatMoney(total - inv.paidAmount, sym), rightX, y, { align: "right" });
+    doc.text("Balance Due", labelX, y); doc.text(fmt(total - inv.paidAmount), rightX, y, { align: "right" });
   }
 
   if (inv.notes) {

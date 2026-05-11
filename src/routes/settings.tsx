@@ -82,7 +82,7 @@ function SettingsPage() {
       downloadFile(
         `hisaab-kitaab-backup-${new Date().toISOString().slice(0, 10)}.json`,
         "application/json",
-        JSON.stringify(data, null, 2),
+        JSON.stringify(data),
       );
       toast.success("Backup downloaded");
     } catch (e: any) {

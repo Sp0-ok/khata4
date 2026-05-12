@@ -89,9 +89,8 @@ export function AccountCard() {
     );
   }
 
-  const meta: any = user.user_metadata || {};
-  const avatar = meta.avatar_url || meta.picture;
-  const name = meta.full_name || meta.name || user.email;
+  const avatar = user.picture;
+  const name = user.name || user.email;
 
   let StatusIcon = Cloud;
   let statusColor = "text-muted-foreground";

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -12,7 +12,8 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { SaveFolderPicker } from "@/components/SaveFolderPicker";
-import { useAutoSync } from "@/lib/sync";
+import { useAutoSync, signInWithGoogle, hasSeenFirstRunPrompt, markFirstRunSeen } from "@/lib/sync";
+import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -132,26 +133,69 @@ function RootComponent() {
 }
 
 function SyncMount() {
-  const { pendingDecision, resolveDecision } = useAutoSync();
+  const { user, pendingDecision, resolveDecision } = useAutoSync();
+  const [showFirstRun, setShowFirstRun] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!user && !hasSeenFirstRunPrompt() && window.location.pathname !== "/onboarding") {
+      const t = setTimeout(() => setShowFirstRun(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
+
   const open = !!pendingDecision;
   const when = pendingDecision ? new Date(pendingDecision.cloudUpdatedAt).toLocaleString() : "";
-  const dev = pendingDecision?.cloudDevice || "another device";
+
+  const dismissFirstRun = () => { markFirstRunSeen(); setShowFirstRun(false); };
+
   return (
-    <AlertDialog open={open} onOpenChange={(o) => { if (!o) resolveDecision("dismiss"); }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Restore cloud backup?</AlertDialogTitle>
-          <AlertDialogDescription>
-            We found a newer backup in your account from <strong>{dev}</strong> ({when}).
-            Restoring will replace the data on this device. Keeping local will overwrite the cloud on the next change.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => resolveDecision("overwrite")}>Keep local</AlertDialogCancel>
-          <AlertDialogAction onClick={() => resolveDecision("restore")}>Restore from cloud</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <AlertDialog open={open} onOpenChange={(o) => { if (!o) resolveDecision("dismiss"); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore cloud backup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              We found a backup in your Google Drive from <strong>{when}</strong>.
+              Restoring will replace the data on this device. Keeping local will overwrite the cloud on the next change.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => resolveDecision("overwrite")}>Keep local</AlertDialogCancel>
+            <AlertDialogAction onClick={() => resolveDecision("restore")}>Restore from cloud</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showFirstRun} onOpenChange={(o) => { if (!o) dismissFirstRun(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Back up to your Google Drive?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sign in with Google to auto-backup your data into a private folder in your own Drive.
+              If you lose your phone, just install Hisaab Kitaab and sign in to get everything back.
+              You can do this later from Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={dismissFirstRun}>Skip</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const r = await signInWithGoogle();
+                setBusy(false);
+                if (r.error) toast.error(r.error.message);
+                else toast.success("Signed in — your data will sync to Drive");
+                dismissFirstRun();
+              }}
+            >
+              Sign in with Google
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

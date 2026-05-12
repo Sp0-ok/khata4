@@ -1,34 +1,24 @@
-// Cloud backup & restore (data only — no images).
-// One row per user in `backups`. Last-write wins.
+// Cloud backup & restore via Google Drive AppData (data only — no images).
+// Replaces the previous Supabase-backed implementation. Last-write wins.
+
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
 import { db, DEFAULT_SETTINGS } from "@/lib/db";
+import {
+  signIn as gSignIn,
+  signOut as gSignOut,
+  getStoredProfile,
+  onAuthChange,
+  uploadBackup,
+  downloadBackup,
+  getBackupMeta,
+  deleteBackup,
+  isSignedIn as gIsSignedIn,
+  type GoogleProfile,
+} from "@/lib/google-drive";
 
-const DEVICE_ID_KEY = "hk_device_id";
-const LAST_PUSH_KEY = "hk_last_push_at"; // ms epoch — last successful push from THIS device
-const LAST_SYNC_KEY = "hk_last_sync_at"; // ms epoch — last successful pull/push of any kind
-
-export function getDeviceId(): string {
-  try {
-    let v = localStorage.getItem(DEVICE_ID_KEY);
-    if (!v) {
-      v = (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
-      localStorage.setItem(DEVICE_ID_KEY, v);
-    }
-    return v;
-  } catch { return "anon"; }
-}
-
-function getDeviceName(): string {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  if (/Android/i.test(ua)) return "Android device";
-  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS device";
-  if (/Mac/i.test(ua)) return "Mac";
-  if (/Windows/i.test(ua)) return "Windows PC";
-  if (/Linux/i.test(ua)) return "Linux";
-  return "Browser";
-}
+const LAST_PUSH_KEY = "hk_last_push_at";
+const LAST_SYNC_KEY = "hk_last_sync_at";
+const FIRST_RUN_KEY = "hk_first_run_done";
 
 // ---------- snapshot ----------
 
@@ -42,27 +32,17 @@ type Snapshot = {
   settings: any[];
 };
 
-function stripPhoto<T extends Record<string, any>>(rec: T): T {
-  if (rec && typeof rec === "object" && "photo" in rec) {
-    const { photo: _omit, ...rest } = rec;
-    return rest as T;
-  }
-  return rec;
-}
-function stripAttachment<T extends Record<string, any>>(rec: T): T {
-  if (rec && typeof rec === "object" && "attachment" in rec) {
-    const { attachment: _omit, ...rest } = rec;
-    return rest as T;
-  }
-  return rec;
-}
-function stripLogo<T extends Record<string, any>>(rec: T): T {
-  if (rec && typeof rec === "object" && "logo" in rec) {
-    const { logo: _omit, ...rest } = rec;
-    return rest as T;
-  }
-  return rec;
-}
+const stripField = (field: string) =>
+  <T extends Record<string, any>>(rec: T): T => {
+    if (rec && typeof rec === "object" && field in rec) {
+      const { [field]: _omit, ...rest } = rec;
+      return rest as T;
+    }
+    return rec;
+  };
+const stripPhoto = stripField("photo");
+const stripAttachment = stripField("attachment");
+const stripLogo = stripField("logo");
 
 export async function buildSnapshot(): Promise<Snapshot> {
   const [parties, transactions, invoices, expenses, settings] = await Promise.all([
@@ -103,7 +83,7 @@ export async function applySnapshot(snap: any): Promise<void> {
         if (oldId != null) idMap.set(Number(oldId), newId);
       }
       const txns = (snap.transactions as any[])
-        .map(t => {
+        .map((t) => {
           const { id: _i, partyId, ...rest } = t;
           const mapped = idMap.get(Number(partyId));
           if (mapped == null) return null;
@@ -151,11 +131,11 @@ function setState(p: Partial<StatusState>) {
   if (p.lastSyncAt != null) {
     try { localStorage.setItem(LAST_SYNC_KEY, String(p.lastSyncAt)); } catch {}
   }
-  _listeners.forEach(l => l());
+  _listeners.forEach((l) => l());
 }
 export function useSyncStatus(): StatusState {
   return useSyncExternalStore(
-    cb => { _listeners.add(cb); return () => _listeners.delete(cb); },
+    (cb) => { _listeners.add(cb); return () => _listeners.delete(cb); },
     () => _state,
     () => _state,
   );
@@ -163,68 +143,28 @@ export function useSyncStatus(): StatusState {
 
 // ---------- cloud ops ----------
 
-async function getUser(): Promise<User | null> {
-  const { data } = await supabase.auth.getUser();
-  return data.user ?? null;
-}
-
 export async function pushSync(): Promise<void> {
-  const user = await getUser();
-  if (!user) throw new Error("Not signed in");
+  if (!gIsSignedIn()) throw new Error("Not signed in");
   setState({ status: "syncing", error: undefined });
   try {
     const snap = await buildSnapshot();
-    const json = JSON.stringify(snap);
-    const sizeBytes = new Blob([json]).size;
-    const now = new Date();
-    const { error } = await supabase.from("backups").upsert({
-      user_id: user.id,
-      payload: snap as any,
-      device_id: getDeviceId(),
-      device_name: getDeviceName(),
-      size_bytes: sizeBytes,
-      updated_at: now.toISOString(),
-    });
-    if (error) throw error;
-    try { localStorage.setItem(LAST_PUSH_KEY, String(now.getTime())); } catch {}
-    setState({ status: "synced", lastSyncAt: now.getTime() });
+    await uploadBackup(snap);
+    const now = Date.now();
+    try { localStorage.setItem(LAST_PUSH_KEY, String(now)); } catch {}
+    setState({ status: "synced", lastSyncAt: now });
   } catch (e: any) {
     setState({ status: "error", error: e?.message || String(e) });
     throw e;
   }
 }
 
-export async function pullSync(): Promise<{
-  payload: any;
-  device_id: string | null;
-  device_name: string | null;
-  updated_at: string;
-} | null> {
-  const user = await getUser();
-  if (!user) throw new Error("Not signed in");
-  const { data, error } = await supabase
-    .from("backups")
-    .select("payload, device_id, device_name, updated_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ?? null;
-}
-
-export async function deleteCloudBackup(): Promise<void> {
-  const user = await getUser();
-  if (!user) throw new Error("Not signed in");
-  const { error } = await supabase.from("backups").delete().eq("user_id", user.id);
-  if (error) throw error;
-}
-
-/** Restore cloud backup over local data (destructive). */
 export async function restoreFromCloud(): Promise<void> {
+  if (!gIsSignedIn()) throw new Error("Not signed in");
   setState({ status: "syncing", error: undefined });
   try {
-    const row = await pullSync();
-    if (!row) throw new Error("No cloud backup found");
-    await applySnapshot(row.payload);
+    const payload = await downloadBackup();
+    if (!payload) throw new Error("No cloud backup found");
+    await applySnapshot(payload);
     const t = Date.now();
     try { localStorage.setItem(LAST_PUSH_KEY, String(t)); } catch {}
     setState({ status: "synced", lastSyncAt: t });
@@ -234,7 +174,12 @@ export async function restoreFromCloud(): Promise<void> {
   }
 }
 
-// ---------- mutation watcher ----------
+export async function deleteCloudBackup(): Promise<void> {
+  if (!gIsSignedIn()) throw new Error("Not signed in");
+  await deleteBackup();
+}
+
+// ---------- mutation watcher (debounced auto-push) ----------
 
 let _hooksInstalled = false;
 let _pushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -246,7 +191,7 @@ function schedulePush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    pushSync().catch(err => console.warn("[sync] push failed", err));
+    pushSync().catch((err) => console.warn("[sync] push failed", err));
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -261,43 +206,21 @@ function installDexieHooks() {
   }
 }
 
-// ---------- auth hook ----------
+// ---------- auth state hook ----------
 
 export function useAuthUser() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<GoogleProfile | null>(getStoredProfile());
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    let mounted = true;
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
+    return onAuthChange(() => setUser(getStoredProfile()));
   }, []);
   return { user, loading };
 }
 
-// ---------- master hook ----------
+// ---------- master auto-sync hook ----------
 
-export type FirstSyncDecision = {
-  needsDecision: true;
-  cloudUpdatedAt: string;
-  cloudDevice: string | null;
-} | { needsDecision: false };
-
-/**
- * Mounts auto-sync side effects: installs Dexie mutation hooks, runs an
- * initial sync on sign-in, and pushes a debounced backup after every local
- * change. Returns a callback that yields a "first-sync decision" the UI can
- * use to prompt the user (restore vs. overwrite cloud).
- */
 export function useAutoSync(): {
-  user: User | null;
+  user: GoogleProfile | null;
   loading: boolean;
   pendingDecision: { cloudUpdatedAt: string; cloudDevice: string | null } | null;
   resolveDecision: (action: "restore" | "overwrite" | "dismiss") => Promise<void>;
@@ -307,10 +230,8 @@ export function useAutoSync(): {
     { cloudUpdatedAt: string; cloudDevice: string | null } | null
   >(null);
 
-  // Install hooks once.
   useEffect(() => { installDexieHooks(); }, []);
 
-  // When user changes: enable/disable auto-push and run initial sync.
   useEffect(() => {
     if (!user) { _autoEnabled = false; setPending(null); return; }
     _autoEnabled = true;
@@ -318,27 +239,17 @@ export function useAutoSync(): {
     let cancelled = false;
     (async () => {
       try {
-        const row = await pullSync();
+        const meta = await getBackupMeta();
         if (cancelled) return;
-        if (!row) {
-          // Nothing in the cloud — push current local data as the initial backup.
+        if (!meta) {
           await pushSync();
           return;
         }
-        // Compare cloud timestamp vs this device's last push.
         const lastPush = Number(localStorage.getItem(LAST_PUSH_KEY) || 0);
-        const cloudMs = new Date(row.updated_at).getTime();
-        const sameDevice = row.device_id && row.device_id === getDeviceId();
-
-        if (sameDevice) {
-          // Our own backup — silently push any newer local changes.
-          await pushSync();
-        } else if (cloudMs > lastPush + 1000) {
-          // Cloud is from another device and newer — ask the user.
-          setPending({
-            cloudUpdatedAt: row.updated_at,
-            cloudDevice: row.device_name ?? null,
-          });
+        const cloudMs = new Date(meta.modifiedTime).getTime();
+        if (cloudMs > lastPush + 2000) {
+          // Cloud is newer than what this device last pushed — ask user.
+          setPending({ cloudUpdatedAt: meta.modifiedTime, cloudDevice: null });
         } else {
           await pushSync();
         }
@@ -349,14 +260,19 @@ export function useAutoSync(): {
     })();
 
     return () => { cancelled = true; _autoEnabled = false; };
-  }, [user?.id]);
+  }, [user?.email]);
+
+  // Re-push when the app comes back to the foreground.
+  useEffect(() => {
+    if (!user) return;
+    const onVis = () => { if (document.visibilityState === "visible") schedulePush(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [user?.email]);
 
   const resolveDecision = async (action: "restore" | "overwrite" | "dismiss") => {
-    if (action === "restore") {
-      await restoreFromCloud();
-    } else if (action === "overwrite") {
-      await pushSync();
-    }
+    if (action === "restore") await restoreFromCloud();
+    else if (action === "overwrite") await pushSync();
     setPending(null);
   };
 
@@ -366,27 +282,35 @@ export function useAutoSync(): {
 // ---------- auth actions ----------
 
 export async function signInWithGoogle(): Promise<{ error?: Error }> {
-  const { lovable } = await import("@/integrations/lovable");
-  const result = await lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin,
-  });
-  if (result.error) return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) };
-  return {};
+  try {
+    await gSignIn();
+    try { localStorage.setItem(FIRST_RUN_KEY, "1"); } catch {}
+    return {};
+  } catch (e: any) {
+    return { error: e instanceof Error ? e : new Error(String(e)) };
+  }
 }
 
 export async function signOut(): Promise<void> {
   _autoEnabled = false;
-  await supabase.auth.signOut();
+  await gSignOut();
 }
 
-/** Sign out then immediately start a Google sign-in flow. */
 export async function switchAccount(): Promise<{ error?: Error }> {
   await signOut();
-  const { lovable } = await import("@/integrations/lovable");
-  const result = await lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin,
-    extraParams: { prompt: "select_account" },
-  });
-  if (result.error) return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) };
-  return {};
+  try {
+    await gSignIn({ selectAccount: true });
+    return {};
+  } catch (e: any) {
+    return { error: e instanceof Error ? e : new Error(String(e)) };
+  }
+}
+
+// ---------- first-run helper ----------
+
+export function hasSeenFirstRunPrompt(): boolean {
+  try { return localStorage.getItem(FIRST_RUN_KEY) === "1"; } catch { return true; }
+}
+export function markFirstRunSeen() {
+  try { localStorage.setItem(FIRST_RUN_KEY, "1"); } catch {}
 }

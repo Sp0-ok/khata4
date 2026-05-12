@@ -8,6 +8,7 @@
 
 import {
   GOOGLE_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
   FULL_SCOPES,
   BACKUP_FILE_NAME,
   ANDROID_REDIRECT_URI,
@@ -147,7 +148,6 @@ async function signInWeb(opts?: { selectAccount?: boolean }): Promise<GoogleProf
 }
 
 async function refreshTokenWeb(): Promise<string | null> {
-  // Silent refresh via GIS — works only if user has granted before.
   try {
     await loadGIS();
     const google = (window as any).google;
@@ -197,7 +197,7 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
   try { localStorage.setItem(PKCE_VERIFIER_KEY, verifier); } catch {}
 
   const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: GOOGLE_ANDROID_CLIENT_ID,
     redirect_uri: ANDROID_REDIRECT_URI,
     response_type: "code",
     scope: FULL_SCOPES,
@@ -224,9 +224,8 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
         if (err) { cleanup(); return reject(new Error(err)); }
         if (!code) { cleanup(); return reject(new Error("No auth code returned")); }
 
-        // Exchange code for token (PKCE — no client secret needed).
         const body = new URLSearchParams({
-          client_id: GOOGLE_CLIENT_ID,
+          client_id: GOOGLE_ANDROID_CLIENT_ID,
           code,
           code_verifier: verifier,
           grant_type: "authorization_code",
@@ -268,7 +267,6 @@ export async function signIn(opts?: { selectAccount?: boolean }): Promise<Google
 export async function signOut(): Promise<void> {
   const t = loadToken();
   if (t) {
-    // Best-effort revoke.
     try {
       await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, { method: "POST" });
     } catch {}
@@ -280,7 +278,6 @@ export async function signOut(): Promise<void> {
 export async function getAccessToken(): Promise<string> {
   const t = loadToken();
   if (t && t.expires_at > Date.now()) return t.access_token;
-  // Try silent refresh on web.
   if (!isCapacitorNative()) {
     const fresh = await refreshTokenWeb();
     if (fresh) return fresh;
@@ -350,7 +347,6 @@ export async function uploadBackup(payload: unknown): Promise<void> {
   const json = JSON.stringify(payload);
 
   if (existingId) {
-    // Update content (PATCH multipart).
     const boundary = "hk_" + randomString(8);
     const body =
       `--${boundary}\r\n` +
@@ -372,7 +368,6 @@ export async function uploadBackup(payload: unknown): Promise<void> {
     return;
   }
 
-  // Create new file in appDataFolder.
   const boundary = "hk_" + randomString(8);
   const metadata = { name: BACKUP_FILE_NAME, parents: ["appDataFolder"] };
   const body =

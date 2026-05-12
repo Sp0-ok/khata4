@@ -84,3 +84,62 @@ cd android
 - **Status bar overlapping content** → the splash plugin handles this
   automatically; if it persists, edit `capacitor.config.ts` `StatusBar`
   block.
+
+---
+
+## Google Drive Sync — Android setup
+
+Hisaab Kitaab backs up data to a private folder in your **own Google Drive**
+(`drive.appdata` scope — invisible in the Drive UI, only this app can read it).
+
+The Web Client ID (`3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5...`) is already
+wired in `src/lib/google-config.ts`. For Android you also need to:
+
+### 1. Add the OAuth redirect intent-filter
+
+Open `android/app/src/main/AndroidManifest.xml` and add this **inside** the
+existing `<activity android:name=".MainActivity" ...>` block (after the
+existing `<intent-filter>` for `MAIN`/`LAUNCHER`):
+
+```xml
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="app.hisaab.khata" android:host="oauth" />
+</intent-filter>
+```
+
+This lets Google's OAuth redirect (`app.hisaab.khata://oauth?code=...`)
+re-open the app after the user signs in.
+
+### 2. Register the Android OAuth client (recommended)
+
+The Web Client ID works inside the system browser fine, but for Play Store
+release you should **also** create an "Android" OAuth client in Google Cloud
+Console:
+
+- **Application type**: Android
+- **Package name**: `app.hisaab.khata`
+- **SHA-1 fingerprint**: run `cd android && ./gradlew signingReport` and
+  copy the `SHA1:` from the `release` (or `debug` for testing) variant.
+
+Add it under the same OAuth consent screen — no extra code change needed;
+Google will automatically allow the package + signature combo.
+
+### 3. Re-sync after edits
+
+```bash
+bun run android:sync
+```
+
+### How it works on Android
+
+- Tapping **Sign in with Google** opens Chrome Custom Tabs (via
+  `@capacitor/browser`) at `accounts.google.com/o/oauth2/v2/auth?...`.
+- After consent, Google redirects to `app.hisaab.khata://oauth?code=...`.
+- Android routes that intent back to the app; `@capacitor/app`'s
+  `appUrlOpen` listener catches it, exchanges the PKCE code for a token,
+  and stores it in IndexedDB-adjacent localStorage.
+- All subsequent Drive API calls go straight from the WebView — no Lovable
+  / Supabase server in the loop.

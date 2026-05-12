@@ -12,7 +12,8 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { SaveFolderPicker } from "@/components/SaveFolderPicker";
-import { useAutoSync } from "@/lib/sync";
+import { useAutoSync, signInWithGoogle, hasSeenFirstRunPrompt, markFirstRunSeen } from "@/lib/sync";
+import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

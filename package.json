@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "android:init": "bun run build && node scripts/prepare-android.mjs && npx cap add android && npx cap sync android",
+    "android:init": "bun run build && npx cap add android && node scripts/prepare-android.mjs && npx cap sync android",
     "android:sync": "bun run build && node scripts/prepare-android.mjs && npx cap sync android",
     "android:open": "npx cap open android",
     "android:run": "bun run android:sync && npx cap run android"

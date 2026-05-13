@@ -172,7 +172,13 @@ async function refreshTokenWeb(): Promise<string | null> {
   } catch { return null; }
 }
 
-// ---------------- native sign-in (Capacitor + system browser) ----------------
+// ---------------- native sign-in (Capacitor Google Auth plugin) ----------------
+//
+// Uses Google's native Android Sign-In SDK via @codetrix-studio/capacitor-google-auth.
+// No redirect URI is involved — Google authenticates the app via package name
+// + SHA-1 fingerprint (Android OAuth client in Google Cloud Console).
+// The Web Client ID is passed as serverClientId so we get back tokens valid
+// for our project, including an accessToken usable for Drive AppData.
 
 function randomString(n: number): string {
   const arr = new Uint8Array(n);
@@ -180,82 +186,66 @@ function randomString(n: number): string {
   return Array.from(arr, b => ("0" + b.toString(16)).slice(-2)).join("");
 }
 
-async function pkce(): Promise<{ verifier: string; challenge: string }> {
-  const verifier = randomString(48);
-  const data = new TextEncoder().encode(verifier);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  return { verifier, challenge: b64 };
+let _gaInitialized = false;
+
+async function getGoogleAuth() {
+  const mod = await import("@codetrix-studio/capacitor-google-auth");
+  const GoogleAuth = (mod as any).GoogleAuth;
+  if (!_gaInitialized) {
+    try {
+      GoogleAuth.initialize({
+        clientId: GOOGLE_CLIENT_ID,
+        scopes: ["openid", "email", "profile", "https://www.googleapis.com/auth/drive.appdata"],
+        grantOfflineAccess: false,
+      });
+    } catch {}
+    _gaInitialized = true;
+  }
+  return GoogleAuth;
 }
 
 async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleProfile> {
-  const { Browser } = await import("@capacitor/browser");
-  const { App } = await import("@capacitor/app");
-
-  const { verifier, challenge } = await pkce();
-  try { localStorage.setItem(PKCE_VERIFIER_KEY, verifier); } catch {}
-
-  const params = new URLSearchParams({
-    client_id: GOOGLE_ANDROID_CLIENT_ID,
-    redirect_uri: ANDROID_REDIRECT_URI,
-    response_type: "code",
-    scope: FULL_SCOPES,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-    access_type: "offline",
-    include_granted_scopes: "true",
+  const GoogleAuth = await getGoogleAuth();
+  if (opts?.selectAccount) {
+    try { await GoogleAuth.signOut(); } catch {}
+  }
+  const user: any = await GoogleAuth.signIn();
+  const accessToken: string | undefined = user?.authentication?.accessToken;
+  if (!accessToken) throw new Error("Google Sign-In returned no access token");
+  saveToken({
+    access_token: accessToken,
+    expires_at: Date.now() + 55 * 60 * 1000,
   });
-  if (opts?.selectAccount) params.set("prompt", "select_account");
+  const p: GoogleProfile = {
+    email: user.email,
+    name: user.name,
+    picture: user.imageUrl,
+    sub: user.id,
+  };
+  saveProfile(p);
+  _emitAuth();
+  return p;
+}
 
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+async function refreshTokenNative(): Promise<string | null> {
+  try {
+    const GoogleAuth = await getGoogleAuth();
+    const r: any = await GoogleAuth.refresh();
+    const accessToken: string | undefined = r?.accessToken;
+    if (!accessToken) return null;
+    saveToken({
+      access_token: accessToken,
+      expires_at: Date.now() + 55 * 60 * 1000,
+    });
+    return accessToken;
+  } catch { return null; }
+}
 
-  return new Promise<GoogleProfile>((resolve, reject) => {
-    let handle: { remove: () => void } | undefined;
-    const cleanup = () => { handle?.remove?.(); };
-
-    App.addListener("appUrlOpen", async (event: any) => {
-      try {
-        const u = new URL(event.url);
-        if (!event.url.startsWith(ANDROID_REDIRECT_URI)) return;
-        const code = u.searchParams.get("code");
-        const err = u.searchParams.get("error");
-        await Browser.close().catch(() => {});
-        if (err) { cleanup(); return reject(new Error(err)); }
-        if (!code) { cleanup(); return reject(new Error("No auth code returned")); }
-
-        const body = new URLSearchParams({
-          client_id: GOOGLE_ANDROID_CLIENT_ID,
-          code,
-          code_verifier: verifier,
-          grant_type: "authorization_code",
-          redirect_uri: ANDROID_REDIRECT_URI,
-        });
-        const res = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString(),
-        });
-        if (!res.ok) {
-          const t = await res.text();
-          cleanup(); return reject(new Error(`Token exchange failed: ${t}`));
-        }
-        const tok = await res.json();
-        const expiresIn = Number(tok.expires_in || 3600);
-        saveToken({
-          access_token: tok.access_token,
-          expires_at: Date.now() + (expiresIn - 60) * 1000,
-        });
-        const p = await fetchProfile(tok.access_token);
-        saveProfile(p);
-        _emitAuth();
-        cleanup();
-        resolve(p);
-      } catch (e) { cleanup(); reject(e); }
-    }).then(s => { handle = s; });
-
-    Browser.open({ url, presentationStyle: "fullscreen" }).catch(reject);
-  });
+async function signOutNative(): Promise<void> {
+  try {
+    const GoogleAuth = await getGoogleAuth();
+    await GoogleAuth.signOut();
+  } catch {}
 }
 
 // ---------------- public sign-in API ----------------

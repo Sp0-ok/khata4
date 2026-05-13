@@ -200,22 +200,32 @@ async function getSocialLogin() {
 }
 
 async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleProfile> {
-  const GoogleAuth = await getGoogleAuth();
+  const SocialLogin = await getSocialLogin();
   if (opts?.selectAccount) {
-    try { await GoogleAuth.signOut(); } catch {}
+    try { await SocialLogin.logout({ provider: "google" }); } catch {}
   }
-  const user: any = await GoogleAuth.signIn();
-  const accessToken: string | undefined = user?.authentication?.accessToken;
+  const login: any = await SocialLogin.login({
+    provider: "google",
+    options: {
+      scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE],
+      style: "standard",
+      filterByAuthorizedAccounts: false,
+      autoSelectEnabled: false,
+    },
+  });
+  const result = login?.result;
+  const accessToken: string | undefined = result?.accessToken?.token;
   if (!accessToken) throw new Error("Google Sign-In returned no access token");
   saveToken({
     access_token: accessToken,
     expires_at: Date.now() + 55 * 60 * 1000,
   });
+  const profile = result?.profile || {};
   const p: GoogleProfile = {
-    email: user.email,
-    name: user.name,
-    picture: user.imageUrl,
-    sub: user.id,
+    email: profile.email,
+    name: profile.name,
+    picture: profile.imageUrl,
+    sub: profile.id,
   };
   saveProfile(p);
   _emitAuth();
@@ -224,8 +234,8 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
 
 async function refreshTokenNative(): Promise<string | null> {
   try {
-    const GoogleAuth = await getGoogleAuth();
-    const r: any = await GoogleAuth.refresh();
+    const SocialLogin = await getSocialLogin();
+    const r: any = await SocialLogin.getAuthorizationCode({ provider: "google" });
     const accessToken: string | undefined = r?.accessToken;
     if (!accessToken) return null;
     saveToken({
@@ -238,8 +248,8 @@ async function refreshTokenNative(): Promise<string | null> {
 
 async function signOutNative(): Promise<void> {
   try {
-    const GoogleAuth = await getGoogleAuth();
-    await GoogleAuth.signOut();
+    const SocialLogin = await getSocialLogin();
+    await SocialLogin.logout({ provider: "google" });
   } catch {}
 }
 

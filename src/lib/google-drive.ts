@@ -235,6 +235,10 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
 async function refreshTokenNative(): Promise<string | null> {
   try {
     const SocialLogin = await getSocialLogin();
+    await SocialLogin.refresh({
+      provider: "google",
+      options: { scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE] },
+    });
     const r: any = await SocialLogin.getAuthorizationCode({ provider: "google" });
     const accessToken: string | undefined = r?.accessToken;
     if (!accessToken) return null;

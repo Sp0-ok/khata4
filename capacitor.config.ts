@@ -35,7 +35,7 @@ const config: CapacitorConfig = {
         "profile",
         "https://www.googleapis.com/auth/drive.appdata",
       ],
-      grantOfflineAccess: false,
+      grantOfflineAccess: true,
       forceCodeForRefreshToken: false,
     },
   },

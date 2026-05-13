@@ -72,7 +72,7 @@ export function isSignedIn(): boolean {
 export function clearAuth() {
   saveToken(null);
   saveProfile(null);
-  try { localStorage.removeItem(PKCE_VERIFIER_KEY); } catch {}
+  try { localStorage.removeItem("hk_pkce_verifier"); } catch {}
 }
 
 // ---------------- platform detection ----------------

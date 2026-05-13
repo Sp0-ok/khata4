@@ -93,7 +93,7 @@ Hisaab Kitaab backs up data to a private folder in your **own Google Drive**
 (`drive.appdata` scope — invisible in the Drive UI, only this app can read it).
 
 On Android, sign-in uses **Google's native Sign-In SDK** via the
-`@codetrix-studio/capacitor-google-auth` plugin. There is **no redirect URI**
+`@capgo/capacitor-social-login` plugin. There is **no redirect URI**
 involved — Google authenticates the app using its package name + SHA-1
 fingerprint registered in Google Cloud Console. This is why you saw
 *"Invalid Redirect: must use either http or https"* when trying to add
@@ -122,11 +122,8 @@ The Web Client ID
 is still used as the `serverClientId` so the access token comes back scoped
 to the same project; it is already wired in `capacitor.config.ts`.
 
-> **Also** add this to `android/app/src/main/res/values/strings.xml`
-> (the plugin reads it on Android):
-> ```xml
-> <string name="server_client_id">3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5.apps.googleusercontent.com</string>
-> ```
+The Android native callback needed for Drive scope consent is patched
+automatically by `bun run android:sync`.
 
 ### 2. Make sure the Drive scope is on the OAuth consent screen
 

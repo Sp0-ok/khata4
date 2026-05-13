@@ -405,7 +405,7 @@ function SettingsPage() {
         </Card>
 
         <p className="pb-4 text-center text-[11px] text-muted-foreground">
-          Hisaab Kitaab · Digital Khata · 100% offline · No ads · No tracking
+          Hisaab Kitaab · Digital Khata · No ads · No tracking
         </p>
       </div>
     </AppShell>

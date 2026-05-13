@@ -65,4 +65,48 @@ for (const f of ["200.html", "404.html"]) {
   writeFileSync(join(CLIENT_DIR, f), html);
 }
 
+const mainActivityPath = "android/app/src/main/java/app/hisaab/khata/MainActivity.java";
+if (existsSync(mainActivityPath)) {
+  let java = readFileSync(mainActivityPath, "utf8");
+  if (!java.includes("ModifiedMainActivityForSocialLoginPlugin")) {
+    java = java.replace(
+      /import com\.getcapacitor\.BridgeActivity;\n/,
+      "import com.getcapacitor.BridgeActivity;\n" +
+        "import com.getcapacitor.Plugin;\n" +
+        "import com.getcapacitor.PluginHandle;\n" +
+        "import android.content.Intent;\n" +
+        "import android.util.Log;\n" +
+        "import ee.forgr.capacitor.social.login.GoogleProvider;\n" +
+        "import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;\n" +
+        "import ee.forgr.capacitor.social.login.SocialLoginPlugin;\n",
+    );
+    java = java.replace(
+      /public class MainActivity extends BridgeActivity \{/,
+      `public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
+  @Override
+  public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+
+    if (requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN && requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
+      PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
+      if (pluginHandle == null) {
+        Log.i("Google Activity Result", "SocialLogin plugin handle is null");
+        return;
+      }
+      Plugin plugin = pluginHandle.getInstance();
+      if (!(plugin instanceof SocialLoginPlugin)) {
+        Log.i("Google Activity Result", "SocialLogin plugin instance is not SocialLoginPlugin");
+        return;
+      }
+      ((SocialLoginPlugin) plugin).handleGoogleLoginIntent(requestCode, data);
+    }
+  }
+
+  public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}`,
+    );
+    writeFileSync(mainActivityPath, java);
+    console.log("[android] Patched MainActivity for Google Drive authorization callback.");
+  }
+}
+
 console.log("[android] dist/client is ready for `npx cap sync android`.");

@@ -43,8 +43,8 @@ export function AccountCard() {
   const handleSignIn = async () => {
     setBusy(true);
     const r = await signInWithGoogle();
-    if (r.error) { toast.error(r.error.message); setBusy(false); }
-    // On success the browser navigates away; loading state is fine.
+    if (r.error) toast.error(r.error.message);
+    setBusy(false);
   };
 
   const handleSync = async () => {
@@ -57,7 +57,8 @@ export function AccountCard() {
   const handleSwitch = async () => {
     setBusy(true);
     const r = await switchAccount();
-    if (r.error) { toast.error(r.error.message); setBusy(false); }
+    if (r.error) toast.error(r.error.message);
+    setBusy(false);
   };
 
   if (loading) {

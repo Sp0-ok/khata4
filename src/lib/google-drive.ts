@@ -1,22 +1,19 @@
 // Google Identity Services + Drive AppData client.
 // - Web: GIS token client (popup) for sign-in & token refresh.
-// - Capacitor (Android): @capacitor/browser opens Google's OAuth in the
-//   system browser; we handle the deep-link redirect via @capacitor/app.
+// - Capacitor (Android): native Google Sign-In via
+//   @codetrix-studio/capacitor-google-auth (no redirect URI involved).
 //
-// Tokens are kept in-memory + localStorage. Refreshes happen silently via
-// `prompt: ""`; if that fails, the user is asked to sign in again.
+// Tokens are kept in-memory + localStorage. Web refresh uses GIS prompt:"";
+// native refresh uses the plugin's GoogleAuth.refresh().
 
 import {
   GOOGLE_CLIENT_ID,
-  GOOGLE_ANDROID_CLIENT_ID,
   FULL_SCOPES,
   BACKUP_FILE_NAME,
-  ANDROID_REDIRECT_URI,
 } from "./google-config";
 
 const TOKEN_KEY = "hk_google_token";
 const PROFILE_KEY = "hk_google_profile";
-const PKCE_VERIFIER_KEY = "hk_pkce_verifier";
 
 export type GoogleProfile = {
   email: string;

@@ -24,19 +24,14 @@ const config: CapacitorConfig = {
       style: "DARK",
       backgroundColor: "#0d9488",
     },
-    GoogleAuth: {
-      // Use the WEB client ID as serverClientId — Android picks up its own
-      // OAuth client automatically via package name + SHA-1 fingerprint
-      // registered in Google Cloud Console.
-      clientId: "3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5.apps.googleusercontent.com",
-      scopes: [
-        "openid",
-        "email",
-        "profile",
-        "https://www.googleapis.com/auth/drive.appdata",
-      ],
-      grantOfflineAccess: true,
-      forceCodeForRefreshToken: false,
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+      logLevel: 1,
     },
   },
 };

@@ -92,40 +92,53 @@ cd android
 Hisaab Kitaab backs up data to a private folder in your **own Google Drive**
 (`drive.appdata` scope — invisible in the Drive UI, only this app can read it).
 
-The Web Client ID (`3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5...`) is already
-wired in `src/lib/google-config.ts`. For Android you also need to:
+On Android, sign-in uses **Google's native Sign-In SDK** via the
+`@codetrix-studio/capacitor-google-auth` plugin. There is **no redirect URI**
+involved — Google authenticates the app using its package name + SHA-1
+fingerprint registered in Google Cloud Console. This is why you saw
+*"Invalid Redirect: must use either http or https"* when trying to add
+`app.hisaab.khata://oauth` to a Web Client — that scheme is not (and does
+not need to be) configured anywhere.
 
-### 1. Add the OAuth redirect intent-filter
+### 1. Register an Android OAuth client (REQUIRED)
 
-Open `android/app/src/main/AndroidManifest.xml` and add this **inside** the
-existing `<activity android:name=".MainActivity" ...>` block (after the
-existing `<intent-filter>` for `MAIN`/`LAUNCHER`):
+In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials):
 
-```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="app.hisaab.khata" android:host="oauth" />
-</intent-filter>
-```
+1. **Create Credentials → OAuth Client ID**
+2. **Application type**: Android
+3. **Package name**: `app.hisaab.khata`
+4. **SHA-1 fingerprint**: get it with:
+   ```bash
+   cd android && ./gradlew signingReport
+   ```
+   Add the **debug** SHA-1 for development APKs and the **release** SHA-1
+   (from your release keystore) before publishing.
 
-This lets Google's OAuth redirect (`app.hisaab.khata://oauth?code=...`)
-re-open the app after the user signs in.
+You don't need to paste this Android client ID anywhere in code — Google
+matches the package + signature automatically when the app calls Sign-In.
 
-### 2. Register the Android OAuth client (recommended)
+The Web Client ID
+(`3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5.apps.googleusercontent.com`)
+is still used as the `serverClientId` so the access token comes back scoped
+to the same project; it is already wired in `capacitor.config.ts`.
 
-The Web Client ID works inside the system browser fine, but for Play Store
-release you should **also** create an "Android" OAuth client in Google Cloud
-Console:
+> **Also** add this to `android/app/src/main/res/values/strings.xml`
+> (the plugin reads it on Android):
+> ```xml
+> <string name="server_client_id">3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5.apps.googleusercontent.com</string>
+> ```
 
-- **Application type**: Android
-- **Package name**: `app.hisaab.khata`
-- **SHA-1 fingerprint**: run `cd android && ./gradlew signingReport` and
-  copy the `SHA1:` from the `release` (or `debug` for testing) variant.
+### 2. Make sure the Drive scope is on the OAuth consent screen
 
-Add it under the same OAuth consent screen — no extra code change needed;
-Google will automatically allow the package + signature combo.
+Under **APIs & Services → OAuth consent screen → Scopes**, ensure these are
+added:
+- `openid`
+- `.../auth/userinfo.email`
+- `.../auth/userinfo.profile`
+- `https://www.googleapis.com/auth/drive.appdata`
+
+While the app is in **Testing** mode, add yourself (and any tester Google
+accounts) under **Test users**.
 
 ### 3. Re-sync after edits
 
@@ -135,11 +148,9 @@ bun run android:sync
 
 ### How it works on Android
 
-- Tapping **Sign in with Google** opens Chrome Custom Tabs (via
-  `@capacitor/browser`) at `accounts.google.com/o/oauth2/v2/auth?...`.
-- After consent, Google redirects to `app.hisaab.khata://oauth?code=...`.
-- Android routes that intent back to the app; `@capacitor/app`'s
-  `appUrlOpen` listener catches it, exchanges the PKCE code for a token,
-  and stores it in IndexedDB-adjacent localStorage.
-- All subsequent Drive API calls go straight from the WebView — no Lovable
-  / Supabase server in the loop.
+- Tapping **Sign in with Google** opens the native Google account picker
+  (system UI, no browser tab).
+- Google verifies the app via package name + SHA-1, then returns an OAuth
+  access token directly to the WebView.
+- All Drive API calls (`drive.appdata`) go straight from the WebView using
+  that token — no Lovable / Supabase server in the loop.

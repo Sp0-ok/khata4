@@ -253,7 +253,9 @@ export async function signIn(opts?: { selectAccount?: boolean }): Promise<Google
 
 export async function signOut(): Promise<void> {
   const t = loadToken();
-  if (t) {
+  if (isCapacitorNative()) {
+    await signOutNative();
+  } else if (t) {
     try {
       await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, { method: "POST" });
     } catch {}
@@ -265,7 +267,10 @@ export async function signOut(): Promise<void> {
 export async function getAccessToken(): Promise<string> {
   const t = loadToken();
   if (t && t.expires_at > Date.now()) return t.access_token;
-  if (!isCapacitorNative()) {
+  if (isCapacitorNative()) {
+    const fresh = await refreshTokenNative();
+    if (fresh) return fresh;
+  } else {
     const fresh = await refreshTokenWeb();
     if (fresh) return fresh;
   }

@@ -122,6 +122,12 @@ The Web Client ID
 is still used as the `serverClientId` so the access token comes back scoped
 to the same project; it is already wired in `capacitor.config.ts`.
 
+> **Also** add this to `android/app/src/main/res/values/strings.xml`
+> (the plugin reads it on Android):
+> ```xml
+> <string name="server_client_id">3603875681-ocr5oh6irkmig5pnl12q91mu1gqqcjr5.apps.googleusercontent.com</string>
+> ```
+
 ### 2. Make sure the Drive scope is on the OAuth consent screen
 
 Under **APIs & Services → OAuth consent screen → Scopes**, ensure these are

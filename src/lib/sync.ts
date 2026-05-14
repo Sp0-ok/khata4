@@ -245,6 +245,16 @@ export function useAutoSync(): {
           await pushSync();
           return;
         }
+        // If local DB is empty but cloud has a backup, silently restore —
+        // avoids accidentally wiping cloud when signing in on a fresh install.
+        const [txnCount, partyCount] = await Promise.all([
+          db.transactions.count(),
+          db.parties.count(),
+        ]);
+        if (txnCount === 0 && partyCount === 0) {
+          await restoreFromCloud();
+          return;
+        }
         const lastPush = Number(localStorage.getItem(LAST_PUSH_KEY) || 0);
         const cloudMs = new Date(meta.modifiedTime).getTime();
         if (cloudMs > lastPush + 2000) {

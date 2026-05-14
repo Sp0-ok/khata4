@@ -48,6 +48,7 @@ export function PhoneInput({ code, rest, onChange, placeholder = "Phone number" 
         value={rest}
         onChange={e => onChange(code, e.target.value)}
         placeholder={placeholder}
+        type="tel"
         inputMode="tel"
         maxLength={20}
         className="flex-1"

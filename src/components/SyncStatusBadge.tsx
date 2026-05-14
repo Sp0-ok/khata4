@@ -85,7 +85,7 @@ export function SyncStatusBadge({ className }: { className?: string }) {
       title={label}
     >
       <Icon className={cn("h-3 w-3", status === "syncing" && "animate-spin")} />
-      <span className="hidden xs:inline max-w-[110px] truncate sm:inline">{label}</span>
+      <span className="hidden max-w-[110px] truncate sm:inline">{label}</span>
       {showRetry && (
         <button
           type="button"

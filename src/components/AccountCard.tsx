@@ -9,9 +9,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  signInWithGoogle, signOut, switchAccount, pushSync,
+  signInWithGoogle, signOut, switchAccount, pushSync, restoreFromCloud,
   deleteCloudBackup, useAuthUser, useSyncStatus,
 } from "@/lib/sync";
+import { CloudDownload, CloudUpload } from "lucide-react";
 
 function relTime(ms: number | null): string {
   if (!ms) return "never";

@@ -214,7 +214,7 @@ function SettingsPage() {
           <div className="space-y-1.5">
             <Label className="text-xs">Phone</Label>
             <Input defaultValue={settings.phone || ""}
-              onBlur={e => updateSettings({ phone: e.target.value })} inputMode="tel" maxLength={20} />
+              onBlur={e => updateSettings({ phone: e.target.value })} type="tel" inputMode="tel" maxLength={20} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Address (shown on invoices)</Label>

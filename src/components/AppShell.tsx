@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
+import { SyncStatusBadge } from "./SyncStatusBadge";
 
 export function AppShell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   return (
@@ -29,6 +30,7 @@ export function PageHeader({
           <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
           {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
         </div>
+        <SyncStatusBadge />
         {right}
       </div>
     </header>

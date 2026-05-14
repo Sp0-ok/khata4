@@ -9,9 +9,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  signInWithGoogle, signOut, switchAccount, pushSync,
+  signInWithGoogle, signOut, switchAccount, pushSync, restoreFromCloud,
   deleteCloudBackup, useAuthUser, useSyncStatus,
 } from "@/lib/sync";
+import { CloudDownload, CloudUpload } from "lucide-react";
 
 function relTime(ms: number | null): string {
   if (!ms) return "never";
@@ -174,6 +175,68 @@ export function AccountCard() {
                 }}
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" disabled={busy}>
+              <CloudDownload className="mr-1.5 h-3.5 w-3.5" /> Restore from cloud
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Restore from cloud?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will replace all data on this device with what's in your Google Drive backup.
+                Local changes that aren't in the cloud will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  setBusy(true);
+                  try { await restoreFromCloud(); toast.success("Restored from cloud"); }
+                  catch (e: any) { toast.error(e?.message || "Restore failed"); }
+                  finally { setBusy(false); }
+                }}
+              >
+                Replace local
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" disabled={busy}>
+              <CloudUpload className="mr-1.5 h-3.5 w-3.5" /> Push to cloud
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Push local to cloud?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will replace your Google Drive backup with the data on this device.
+                The previous cloud backup will be overwritten.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  setBusy(true);
+                  try { await pushSync(); toast.success("Pushed to cloud"); }
+                  catch (e: any) { toast.error(e?.message || "Push failed"); }
+                  finally { setBusy(false); }
+                }}
+              >
+                Replace cloud
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

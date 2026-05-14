@@ -11,4 +11,4 @@ export const FULL_SCOPES = `${PROFILE_SCOPES} ${DRIVE_APPDATA_SCOPE}`;
 export const BACKUP_FILE_NAME = "hisaab-kitaab-backup.json";
 
 export const ANDROID_REDIRECT_SCHEME = "app.hisaab.khata";
-export const ANDROID_REDIRECT_URI = `${ANDROID_REDIRECT_SCHEME}://oauth`;
+export const ANDROID_REDIRECT_URI = "http://localhost";

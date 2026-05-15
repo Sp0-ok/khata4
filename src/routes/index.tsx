@@ -35,8 +35,11 @@ function Dashboard() {
   const parties = useLiveQuery(() => db.parties.toArray(), []);
 
   useEffect(() => {
-    if (settings && !settings.onboarded) navigate({ to: "/onboarding" });
+    if (settings && !settings.onboarded) navigate({ to: "/onboarding", replace: true });
   }, [settings, navigate]);
+
+  // Avoid flashing the dashboard before onboarding redirect on first launch.
+  if (!settings || !settings.onboarded) return null;
 
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);

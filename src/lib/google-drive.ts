@@ -305,10 +305,22 @@ const DRIVE = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 
 async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
-  const tok = await getAccessToken();
-  const headers = new Headers(init.headers || {});
-  headers.set("Authorization", `Bearer ${tok}`);
-  return fetch(input, { ...init, headers });
+  const doFetch = async (token: string) => {
+    const headers = new Headers(init.headers || {});
+    headers.set("Authorization", `Bearer ${token}`);
+    return fetch(input, { ...init, headers });
+  };
+  let tok = await getAccessToken();
+  let res = await doFetch(tok);
+  if (res.status === 401) {
+    // Token rejected — force refresh and retry once.
+    saveToken(null);
+    const fresh = isCapacitorNative()
+      ? await refreshTokenNative()
+      : await refreshTokenWeb();
+    if (fresh) res = await doFetch(fresh);
+  }
+  return res;
 }
 
 async function findBackupFileId(): Promise<string | null> {

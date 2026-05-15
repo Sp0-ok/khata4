@@ -141,7 +141,7 @@ export function AccountCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>Sign out of {user.email}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Your data on this device stays untouched. Cloud backup pauses until you sign in again.
+                Signing out will clear all local data on this device. Your data is safe in Google Drive and will restore when you sign back in.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

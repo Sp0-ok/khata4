@@ -303,7 +303,35 @@ export async function signInWithGoogle(): Promise<{ error?: Error }> {
 
 export async function signOut(): Promise<void> {
   _autoEnabled = false;
+  if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
   await gSignOut();
+  await clearAllLocalData();
+  setState({ status: "idle", lastSyncAt: null, error: undefined });
+}
+
+/**
+ * Wipes every Dexie table and sync-related localStorage keys so a fresh
+ * sign-in starts from a clean slate (and pulls the new account's cloud data).
+ */
+export async function clearAllLocalData(): Promise<void> {
+  try {
+    await db.transaction(
+      "rw",
+      [db.parties, db.transactions, db.invoices, db.expenses, db.settings],
+      async () => {
+        await db.parties.clear();
+        await db.transactions.clear();
+        await db.invoices.clear();
+        await db.expenses.clear();
+        await db.settings.clear();
+      },
+    );
+  } catch (e) { console.warn("[sync] clear local data failed", e); }
+  try {
+    localStorage.removeItem(LAST_PUSH_KEY);
+    localStorage.removeItem(LAST_SYNC_KEY);
+    localStorage.removeItem(FIRST_RUN_KEY);
+  } catch {}
 }
 
 export async function switchAccount(): Promise<{ error?: Error }> {

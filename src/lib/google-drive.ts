@@ -191,7 +191,8 @@ async function getSocialLogin() {
     await SocialLogin.initialize({
       google: {
         webClientId: GOOGLE_CLIENT_ID,
-        mode: "online",
+        mode: "offline",
+        forceCodeForRefreshToken: true,
       },
     });
     _socialLoginInitialized = true;

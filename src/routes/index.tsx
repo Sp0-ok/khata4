@@ -189,7 +189,7 @@ function Dashboard() {
           <h2 className="text-sm font-semibold text-muted-foreground">Recent activity</h2>
           <Link to="/customers" className="text-xs font-medium text-primary">View all</Link>
         </div>
-        <div className="mt-3 space-y-4">
+        <div className="mt-3 flex flex-col gap-3">
           {recent && recent.length === 0 && (
             <Card className="flex flex-col items-center gap-3 p-8 text-center">
               <div className="rounded-full bg-accent p-3"><TrendingUp className="h-6 w-6 text-primary" /></div>

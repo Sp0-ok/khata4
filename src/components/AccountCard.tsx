@@ -127,9 +127,26 @@ export function AccountCard() {
         <Button variant="outline" size="sm" className="h-10 rounded-xl" disabled={busy || status === "syncing"} onClick={handleSync}>
           <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${status === "syncing" ? "animate-spin" : ""}`} /> Sync now
         </Button>
-        <Button variant="outline" size="sm" className="h-10 rounded-xl" disabled={busy} onClick={handleSwitch}>
-          <UserCog className="mr-1.5 h-3.5 w-3.5" /> Switch account
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-10 rounded-xl" disabled={busy}>
+              <UserCog className="mr-1.5 h-3.5 w-3.5" /> Switch account
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Switch Google account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                All data on this device will be replaced with the data from the account you sign into.
+                Your current account's data stays safe in its Google Drive backup.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSwitch}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>

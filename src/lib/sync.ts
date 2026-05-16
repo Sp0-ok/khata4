@@ -314,23 +314,25 @@ export async function signOut(): Promise<void> {
  * sign-in starts from a clean slate (and pulls the new account's cloud data).
  */
 export async function clearAllLocalData(): Promise<void> {
+  // Preserve the settings row (including the `onboarded` flag) so signing out
+  // or switching accounts never re-triggers the first-run welcome flow.
+  // Cloud restore will overwrite settings with the new account's snapshot.
   try {
     await db.transaction(
       "rw",
-      [db.parties, db.transactions, db.invoices, db.expenses, db.settings],
+      [db.parties, db.transactions, db.invoices, db.expenses],
       async () => {
         await db.parties.clear();
         await db.transactions.clear();
         await db.invoices.clear();
         await db.expenses.clear();
-        await db.settings.clear();
       },
     );
   } catch (e) { console.warn("[sync] clear local data failed", e); }
   try {
     localStorage.removeItem(LAST_PUSH_KEY);
     localStorage.removeItem(LAST_SYNC_KEY);
-    localStorage.removeItem(FIRST_RUN_KEY);
+    // NOTE: keep FIRST_RUN_KEY so onboarding only shows on first install.
   } catch {}
 }
 

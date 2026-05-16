@@ -38,16 +38,17 @@ function Dashboard() {
     if (settings && !settings.onboarded) navigate({ to: "/onboarding", replace: true });
   }, [settings, navigate]);
 
+  const [eggOpen, setEggOpen] = useState(false);
+  const holdTimer = useRef<number | null>(null);
+  const holdFired = useRef(false);
+
   // Avoid flashing the dashboard before onboarding redirect on first launch.
+  // Must be after all hooks to keep hook order stable (React error #310).
   if (!settings || !settings.onboarded) return null;
 
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
   const net = receivable - payable;
-
-  const [eggOpen, setEggOpen] = useState(false);
-  const holdTimer = useRef<number | null>(null);
-  const holdFired = useRef(false);
 
   const startHold = () => {
     holdFired.current = false;

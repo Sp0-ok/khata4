@@ -183,6 +183,19 @@ function randomString(n: number): string {
 }
 
 let _socialLoginInitialized = false;
+let _nativeRefreshPromise: Promise<string | null> | null = null;
+const GOOGLE_SCOPES = ["openid", "email", "profile", DRIVE_APPDATA_SCOPE];
+
+function extractNativeAccessToken(result: any): string | undefined {
+  return result?.accessToken?.token || result?.accessToken || result?.access_token;
+}
+
+function saveNativeAccessToken(accessToken: string) {
+  saveToken({
+    access_token: accessToken,
+    expires_at: Date.now() + 55 * 60 * 1000,
+  });
+}
 
 async function getSocialLogin() {
   const mod = await import("@capgo/capacitor-social-login");
@@ -206,19 +219,16 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
   const login: any = await SocialLogin.login({
     provider: "google",
     options: {
-      scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE],
+      scopes: GOOGLE_SCOPES,
       style: "standard",
       filterByAuthorizedAccounts: false,
       autoSelectEnabled: false,
     },
   });
   const result = login?.result;
-  const accessToken: string | undefined = result?.accessToken?.token;
+  const accessToken = extractNativeAccessToken(result);
   if (!accessToken) throw new Error("Google Sign-In returned no access token");
-  saveToken({
-    access_token: accessToken,
-    expires_at: Date.now() + 55 * 60 * 1000,
-  });
+  saveNativeAccessToken(accessToken);
   const profile = result?.profile || {};
   const p: GoogleProfile = {
     email: profile.email,
@@ -232,19 +242,57 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
 }
 
 async function refreshTokenNative(): Promise<string | null> {
+  if (_nativeRefreshPromise) return _nativeRefreshPromise;
+  _nativeRefreshPromise = refreshTokenNativeOnce().finally(() => {
+    _nativeRefreshPromise = null;
+  });
+  return _nativeRefreshPromise;
+}
+
+async function refreshTokenNativeOnce(): Promise<string | null> {
   try {
     const SocialLogin = await getSocialLogin();
     await SocialLogin.refresh({
       provider: "google",
-      options: { scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE] },
+      options: { scopes: GOOGLE_SCOPES },
     });
     const r: any = await SocialLogin.getAuthorizationCode({ provider: "google" });
-    const accessToken: string | undefined = r?.accessToken;
-    if (!accessToken) return null;
-    saveToken({
-      access_token: accessToken,
-      expires_at: Date.now() + 55 * 60 * 1000,
+    const accessToken = extractNativeAccessToken(r);
+    if (!accessToken) throw new Error("Refresh returned no access token");
+    saveNativeAccessToken(accessToken);
+    return accessToken;
+  } catch {}
+
+  // The native plugin can lose its cached ID token while Google still has an
+  // authorized account on the device. Ask Credential Manager for an already
+  // authorized Google account so Drive gets a fresh access token without the
+  // user manually signing in again.
+  try {
+    const SocialLogin = await getSocialLogin();
+    const login: any = await SocialLogin.login({
+      provider: "google",
+      options: {
+        scopes: GOOGLE_SCOPES,
+        style: "bottom",
+        filterByAuthorizedAccounts: true,
+        autoSelectEnabled: true,
+      },
     });
+    const result = login?.result;
+    const accessToken = extractNativeAccessToken(result);
+    if (!accessToken) return null;
+    saveNativeAccessToken(accessToken);
+
+    const profile = result?.profile;
+    if (profile?.email) {
+      saveProfile({
+        email: profile.email,
+        name: profile.name,
+        picture: profile.imageUrl,
+        sub: profile.id,
+      });
+      _emitAuth();
+    }
     return accessToken;
   } catch { return null; }
 }

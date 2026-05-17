@@ -4,16 +4,18 @@
 // 2. Strips any stray references to Cloudflare/server endpoints from the shell.
 //
 // Run automatically by `bun run android:sync`.
-import { existsSync, readFileSync, writeFileSync, copyFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const CLIENT_DIR = "dist/client";
-const SHELL_CANDIDATES = [
-  "index.html",
-  "_shell.html",
-  "_shell/index.html",
-  "__spa/index.html",
-];
+const SHELL_CANDIDATES = ["index.html", "_shell.html", "_shell/index.html", "__spa/index.html"];
 
 if (!existsSync(CLIENT_DIR)) {
   console.error(`[android] ${CLIENT_DIR} not found. Run \`bun run build\` first.`);
@@ -117,6 +119,53 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
 `;
   writeFileSync(mainActivityPath, mainActivity);
   console.log("[android] Wrote MainActivity.java with SocialLogin hooks.");
+}
+
+// Patch @capgo/capacitor-social-login's Android Google provider so an expired
+// ID token does not force logout. Hisaab Kitaab only needs a valid Drive access
+// token; Google Play Services can silently mint that token again for previously
+// granted scopes until the user explicitly logs out or switches accounts.
+const googleProviderPath =
+  "node_modules/@capgo/capacitor-social-login/android/src/main/java/ee/forgr/capacitor/social/login/GoogleProvider.java";
+if (existsSync(googleProviderPath)) {
+  let provider = readFileSync(googleProviderPath, "utf8");
+  const originalProvider = provider;
+  provider = provider.replaceAll(
+    `boolean isValidIdToken = idTokenValid(GoogleProvider.this.idToken);
+
+                if (!isValidAccessToken || !isValidIdToken) {`,
+    `// Hisaab Kitaab only needs a valid Drive access token here. The ID token
+                // may expire independently and should not clear the saved Google account.
+                if (!isValidAccessToken) {`,
+  );
+  provider = provider.replace(
+    `        // 1) Retrieve a fresh ID token via Credential Manager (may be silent or may require user interaction).
+        // 2) Retrieve a fresh access token via the Authorization API.`,
+    `        // Prefer a silent Drive access-token refresh through Google's Authorization API.
+        // This avoids forcing the user through account selection when only the ID token expired.
+        try {
+            AuthorizationResult authResult = getAuthorizationResult(false).get(60, TimeUnit.SECONDS);
+            String newAccessToken = authResult.getAccessToken();
+            if (newAccessToken != null && !newAccessToken.isEmpty()) {
+                persistState(
+                    GoogleProvider.this.idToken != null ? GoogleProvider.this.idToken : "",
+                    newAccessToken,
+                    GoogleProvider.this.scopes
+                );
+                call.resolve();
+                return;
+            }
+        } catch (Exception e) {
+            Log.w(LOG_TAG, "Silent Google access-token refresh failed; falling back to Credential Manager", e);
+        }
+
+        // 1) Retrieve a fresh ID token via Credential Manager (may be silent or may require user interaction).
+        // 2) Retrieve a fresh access token via the Authorization API.`,
+  );
+  if (provider !== originalProvider) {
+    writeFileSync(googleProviderPath, provider);
+    console.log("[android] Patched SocialLogin GoogleProvider for silent token refresh.");
+  }
 }
 
 console.log("[android] dist/client is ready for `npx cap sync android`.");

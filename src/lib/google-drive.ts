@@ -41,7 +41,9 @@ function loadToken(): StoredToken | null {
     if (!t?.access_token || !t.expires_at) return null;
     _token = t;
     return t;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function saveToken(t: StoredToken | null) {
@@ -56,7 +58,9 @@ export function getStoredProfile(): GoogleProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     return raw ? (JSON.parse(raw) as GoogleProfile) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function saveProfile(p: GoogleProfile | null) {
@@ -73,7 +77,9 @@ export function isSignedIn(): boolean {
 export function clearAuth() {
   saveToken(null);
   saveProfile(null);
-  try { localStorage.removeItem("hk_pkce_verifier"); } catch {}
+  try {
+    localStorage.removeItem("hk_pkce_verifier");
+  } catch {}
 }
 
 // ---------------- platform detection ----------------
@@ -137,7 +143,9 @@ async function signInWeb(opts?: { selectAccount?: boolean }): Promise<GoogleProf
           saveProfile(p);
           _emitAuth();
           resolve(p);
-        } catch (e) { reject(e); }
+        } catch (e) {
+          reject(e);
+        }
       },
       error_callback: (err: any) => reject(new Error(err?.message || "Sign-in cancelled")),
     });
@@ -167,7 +175,9 @@ async function refreshTokenWeb(): Promise<string | null> {
       });
       client.requestAccessToken();
     });
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // ---------------- native sign-in (Capgo Social Login plugin) ----------------
@@ -179,18 +189,57 @@ async function refreshTokenWeb(): Promise<string | null> {
 function randomString(n: number): string {
   const arr = new Uint8Array(n);
   crypto.getRandomValues(arr);
-  return Array.from(arr, b => ("0" + b.toString(16)).slice(-2)).join("");
+  return Array.from(arr, (b) => ("0" + b.toString(16)).slice(-2)).join("");
 }
 
 let _socialLoginInitialized = false;
+let _nativeRefreshPromise: Promise<string | null> | null = null;
+const GOOGLE_SCOPES = ["openid", "email", "profile", DRIVE_APPDATA_SCOPE];
 
-async function getSocialLogin() {
+type NativeLoginOptions = {
+  provider: "google";
+  options?: Record<string, unknown>;
+};
+
+type SocialLoginApi = {
+  initialize: (options: { google: { webClientId: string; mode: "online" } }) => Promise<void>;
+  login: (options: NativeLoginOptions) => Promise<unknown>;
+  refresh: (options: NativeLoginOptions) => Promise<void>;
+  getAuthorizationCode: (options: { provider: "google" }) => Promise<unknown>;
+  logout: (options: { provider: "google" }) => Promise<void>;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function extractNativeAccessToken(result: unknown): string | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const record = result as Record<string, unknown>;
+  const accessToken = record.accessToken;
+  if (accessToken && typeof accessToken === "object") {
+    const token = (accessToken as Record<string, unknown>).token;
+    if (typeof token === "string") return token;
+  }
+  if (typeof accessToken === "string") return accessToken;
+  return typeof record.access_token === "string" ? record.access_token : undefined;
+}
+
+function saveNativeAccessToken(accessToken: string) {
+  saveToken({
+    access_token: accessToken,
+    expires_at: Date.now() + 55 * 60 * 1000,
+  });
+}
+
+async function getSocialLogin(): Promise<SocialLoginApi> {
   const mod = await import("@capgo/capacitor-social-login");
-  const SocialLogin = (mod as any).SocialLogin;
+  const SocialLogin = (mod as { SocialLogin: SocialLoginApi }).SocialLogin;
   if (!_socialLoginInitialized) {
     await SocialLogin.initialize({
       google: {
         webClientId: GOOGLE_CLIENT_ID,
+        mode: "online",
       },
     });
     _socialLoginInitialized = true;
@@ -201,30 +250,31 @@ async function getSocialLogin() {
 async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleProfile> {
   const SocialLogin = await getSocialLogin();
   if (opts?.selectAccount) {
-    try { await SocialLogin.logout({ provider: "google" }); } catch {}
+    try {
+      await SocialLogin.logout({ provider: "google" });
+    } catch {
+      // Ignore stale native sessions before explicit account switching.
+    }
   }
-  const login: any = await SocialLogin.login({
+  const login = await SocialLogin.login({
     provider: "google",
     options: {
-      scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE],
+      scopes: GOOGLE_SCOPES,
       style: "standard",
       filterByAuthorizedAccounts: false,
       autoSelectEnabled: false,
     },
   });
-  const result = login?.result;
-  const accessToken: string | undefined = result?.accessToken?.token;
+  const result = asRecord(login)?.result;
+  const accessToken = extractNativeAccessToken(result);
   if (!accessToken) throw new Error("Google Sign-In returned no access token");
-  saveToken({
-    access_token: accessToken,
-    expires_at: Date.now() + 55 * 60 * 1000,
-  });
-  const profile = result?.profile || {};
+  saveNativeAccessToken(accessToken);
+  const profile = asRecord(asRecord(result)?.profile) || {};
   const p: GoogleProfile = {
-    email: profile.email,
-    name: profile.name,
-    picture: profile.imageUrl,
-    sub: profile.id,
+    email: typeof profile.email === "string" ? profile.email : "",
+    name: typeof profile.name === "string" ? profile.name : undefined,
+    picture: typeof profile.imageUrl === "string" ? profile.imageUrl : undefined,
+    sub: typeof profile.id === "string" ? profile.id : undefined,
   };
   saveProfile(p);
   _emitAuth();
@@ -232,28 +282,72 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
 }
 
 async function refreshTokenNative(): Promise<string | null> {
+  if (_nativeRefreshPromise) return _nativeRefreshPromise;
+  _nativeRefreshPromise = refreshTokenNativeOnce().finally(() => {
+    _nativeRefreshPromise = null;
+  });
+  return _nativeRefreshPromise;
+}
+
+async function refreshTokenNativeOnce(): Promise<string | null> {
   try {
     const SocialLogin = await getSocialLogin();
     await SocialLogin.refresh({
       provider: "google",
-      options: { scopes: ["openid", "email", "profile", DRIVE_APPDATA_SCOPE] },
+      options: { scopes: GOOGLE_SCOPES },
     });
-    const r: any = await SocialLogin.getAuthorizationCode({ provider: "google" });
-    const accessToken: string | undefined = r?.accessToken;
-    if (!accessToken) return null;
-    saveToken({
-      access_token: accessToken,
-      expires_at: Date.now() + 55 * 60 * 1000,
-    });
+    const r = await SocialLogin.getAuthorizationCode({ provider: "google" });
+    const accessToken = extractNativeAccessToken(r);
+    if (!accessToken) throw new Error("Refresh returned no access token");
+    saveNativeAccessToken(accessToken);
     return accessToken;
-  } catch { return null; }
+  } catch {
+    // Fall back to a silent authorized-account login below.
+  }
+
+  // The native plugin can lose its cached ID token while Google still has an
+  // authorized account on the device. Ask Credential Manager for an already
+  // authorized Google account so Drive gets a fresh access token without the
+  // user manually signing in again.
+  try {
+    const SocialLogin = await getSocialLogin();
+    const login = await SocialLogin.login({
+      provider: "google",
+      options: {
+        scopes: GOOGLE_SCOPES,
+        style: "bottom",
+        filterByAuthorizedAccounts: true,
+        autoSelectEnabled: true,
+      },
+    });
+    const result = asRecord(login)?.result;
+    const accessToken = extractNativeAccessToken(result);
+    if (!accessToken) return null;
+    saveNativeAccessToken(accessToken);
+
+    const profile = asRecord(asRecord(result)?.profile);
+    if (typeof profile?.email === "string") {
+      saveProfile({
+        email: profile.email,
+        name: typeof profile.name === "string" ? profile.name : undefined,
+        picture: typeof profile.imageUrl === "string" ? profile.imageUrl : undefined,
+        sub: typeof profile.id === "string" ? profile.id : undefined,
+      });
+      _emitAuth();
+    }
+    return accessToken;
+  } catch {
+    return null;
+  }
 }
 
 async function signOutNative(): Promise<void> {
   try {
     const SocialLogin = await getSocialLogin();
     await SocialLogin.logout({ provider: "google" });
-  } catch {}
+  } catch {
+    // Local auth state is cleared by the caller even if native logout fails.
+  }
 }
 
 // ---------------- public sign-in API ----------------
@@ -268,7 +362,9 @@ export async function signOut(): Promise<void> {
     await signOutNative();
   } else if (t) {
     try {
-      await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, { method: "POST" });
+      await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, {
+        method: "POST",
+      });
     } catch {}
   }
   clearAuth();
@@ -291,7 +387,9 @@ export async function getAccessToken(): Promise<string> {
 // ---------------- auth event bus ----------------
 
 const _authListeners = new Set<() => void>();
-function _emitAuth() { _authListeners.forEach(l => l()); }
+function _emitAuth() {
+  _authListeners.forEach((l) => l());
+}
 export function onAuthChange(cb: () => void): () => void {
   _authListeners.add(cb);
   return () => _authListeners.delete(cb);
@@ -313,9 +411,7 @@ async function authedFetch(input: string, init: RequestInit = {}): Promise<Respo
   if (res.status === 401) {
     // Token rejected — force refresh and retry once.
     saveToken(null);
-    const fresh = isCapacitorNative()
-      ? await refreshTokenNative()
-      : await refreshTokenWeb();
+    const fresh = isCapacitorNative() ? await refreshTokenNative() : await refreshTokenWeb();
     if (fresh) res = await doFetch(fresh);
   }
   return res;

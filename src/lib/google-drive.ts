@@ -202,7 +202,7 @@ type NativeLoginOptions = {
 };
 
 type SocialLoginApi = {
-  initialize: (options: { google: { webClientId: string } }) => Promise<void>;
+  initialize: (options: { google: { webClientId: string; mode: "online" } }) => Promise<void>;
   login: (options: NativeLoginOptions) => Promise<unknown>;
   refresh: (options: NativeLoginOptions) => Promise<void>;
   getAuthorizationCode: (options: { provider: "google" }) => Promise<unknown>;
@@ -239,6 +239,7 @@ async function getSocialLogin(): Promise<SocialLoginApi> {
     await SocialLogin.initialize({
       google: {
         webClientId: GOOGLE_CLIENT_ID,
+        mode: "online",
       },
     });
     _socialLoginInitialized = true;

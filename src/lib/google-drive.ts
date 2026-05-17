@@ -232,7 +232,7 @@ function saveNativeAccessToken(accessToken: string) {
   });
 }
 
-async function getSocialLogin() {
+async function getSocialLogin(): Promise<SocialLoginApi> {
   const mod = await import("@capgo/capacitor-social-login");
   const SocialLogin = (mod as { SocialLogin: SocialLoginApi }).SocialLogin;
   if (!_socialLoginInitialized) {
@@ -270,10 +270,10 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
   saveNativeAccessToken(accessToken);
   const profile = asRecord(asRecord(result)?.profile) || {};
   const p: GoogleProfile = {
-    email: profile.email,
-    name: profile.name,
-    picture: profile.imageUrl,
-    sub: profile.id,
+    email: typeof profile.email === "string" ? profile.email : "",
+    name: typeof profile.name === "string" ? profile.name : undefined,
+    picture: typeof profile.imageUrl === "string" ? profile.imageUrl : undefined,
+    sub: typeof profile.id === "string" ? profile.id : undefined,
   };
   saveProfile(p);
   _emitAuth();

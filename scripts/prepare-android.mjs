@@ -4,16 +4,18 @@
 // 2. Strips any stray references to Cloudflare/server endpoints from the shell.
 //
 // Run automatically by `bun run android:sync`.
-import { existsSync, readFileSync, writeFileSync, copyFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const CLIENT_DIR = "dist/client";
-const SHELL_CANDIDATES = [
-  "index.html",
-  "_shell.html",
-  "_shell/index.html",
-  "__spa/index.html",
-];
+const SHELL_CANDIDATES = ["index.html", "_shell.html", "_shell/index.html", "__spa/index.html"];
 
 if (!existsSync(CLIENT_DIR)) {
   console.error(`[android] ${CLIENT_DIR} not found. Run \`bun run build\` first.`);
@@ -123,7 +125,8 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
 // ID token does not force logout. Hisaab Kitaab only needs a valid Drive access
 // token; Google Play Services can silently mint that token again for previously
 // granted scopes until the user explicitly logs out or switches accounts.
-const googleProviderPath = "node_modules/@capgo/capacitor-social-login/android/src/main/java/ee/forgr/capacitor/social/login/GoogleProvider.java";
+const googleProviderPath =
+  "node_modules/@capgo/capacitor-social-login/android/src/main/java/ee/forgr/capacitor/social/login/GoogleProvider.java";
 if (existsSync(googleProviderPath)) {
   let provider = readFileSync(googleProviderPath, "utf8");
   const originalProvider = provider;

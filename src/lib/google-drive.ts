@@ -186,8 +186,16 @@ let _socialLoginInitialized = false;
 let _nativeRefreshPromise: Promise<string | null> | null = null;
 const GOOGLE_SCOPES = ["openid", "email", "profile", DRIVE_APPDATA_SCOPE];
 
-function extractNativeAccessToken(result: any): string | undefined {
-  return result?.accessToken?.token || result?.accessToken || result?.access_token;
+function extractNativeAccessToken(result: unknown): string | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const record = result as Record<string, unknown>;
+  const accessToken = record.accessToken;
+  if (accessToken && typeof accessToken === "object") {
+    const token = (accessToken as Record<string, unknown>).token;
+    if (typeof token === "string") return token;
+  }
+  if (typeof accessToken === "string") return accessToken;
+  return typeof record.access_token === "string" ? record.access_token : undefined;
 }
 
 function saveNativeAccessToken(accessToken: string) {
@@ -214,7 +222,11 @@ async function getSocialLogin() {
 async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleProfile> {
   const SocialLogin = await getSocialLogin();
   if (opts?.selectAccount) {
-    try { await SocialLogin.logout({ provider: "google" }); } catch {}
+    try {
+      await SocialLogin.logout({ provider: "google" });
+    } catch {
+      // Ignore stale native sessions before explicit account switching.
+    }
   }
   const login: any = await SocialLogin.login({
     provider: "google",
@@ -261,7 +273,9 @@ async function refreshTokenNativeOnce(): Promise<string | null> {
     if (!accessToken) throw new Error("Refresh returned no access token");
     saveNativeAccessToken(accessToken);
     return accessToken;
-  } catch {}
+  } catch {
+    // Fall back to a silent authorized-account login below.
+  }
 
   // The native plugin can lose its cached ID token while Google still has an
   // authorized account on the device. Ask Credential Manager for an already
@@ -294,14 +308,18 @@ async function refreshTokenNativeOnce(): Promise<string | null> {
       _emitAuth();
     }
     return accessToken;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 async function signOutNative(): Promise<void> {
   try {
     const SocialLogin = await getSocialLogin();
     await SocialLogin.logout({ provider: "google" });
-  } catch {}
+  } catch {
+    // Local auth state is cleared by the caller even if native logout fails.
+  }
 }
 
 // ---------------- public sign-in API ----------------

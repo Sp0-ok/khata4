@@ -196,6 +196,23 @@ let _socialLoginInitialized = false;
 let _nativeRefreshPromise: Promise<string | null> | null = null;
 const GOOGLE_SCOPES = ["openid", "email", "profile", DRIVE_APPDATA_SCOPE];
 
+type NativeLoginOptions = {
+  provider: "google";
+  options?: Record<string, unknown>;
+};
+
+type SocialLoginApi = {
+  initialize: (options: { google: { webClientId: string } }) => Promise<void>;
+  login: (options: NativeLoginOptions) => Promise<unknown>;
+  refresh: (options: NativeLoginOptions) => Promise<void>;
+  getAuthorizationCode: (options: { provider: "google" }) => Promise<unknown>;
+  logout: (options: { provider: "google" }) => Promise<void>;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
 function extractNativeAccessToken(result: unknown): string | undefined {
   if (!result || typeof result !== "object") return undefined;
   const record = result as Record<string, unknown>;
@@ -217,7 +234,7 @@ function saveNativeAccessToken(accessToken: string) {
 
 async function getSocialLogin() {
   const mod = await import("@capgo/capacitor-social-login");
-  const SocialLogin = (mod as any).SocialLogin;
+  const SocialLogin = (mod as { SocialLogin: SocialLoginApi }).SocialLogin;
   if (!_socialLoginInitialized) {
     await SocialLogin.initialize({
       google: {
@@ -238,7 +255,7 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
       // Ignore stale native sessions before explicit account switching.
     }
   }
-  const login: any = await SocialLogin.login({
+  const login = await SocialLogin.login({
     provider: "google",
     options: {
       scopes: GOOGLE_SCOPES,
@@ -247,11 +264,11 @@ async function signInNative(opts?: { selectAccount?: boolean }): Promise<GoogleP
       autoSelectEnabled: false,
     },
   });
-  const result = login?.result;
+  const result = asRecord(login)?.result;
   const accessToken = extractNativeAccessToken(result);
   if (!accessToken) throw new Error("Google Sign-In returned no access token");
   saveNativeAccessToken(accessToken);
-  const profile = result?.profile || {};
+  const profile = asRecord(asRecord(result)?.profile) || {};
   const p: GoogleProfile = {
     email: profile.email,
     name: profile.name,
@@ -278,7 +295,7 @@ async function refreshTokenNativeOnce(): Promise<string | null> {
       provider: "google",
       options: { scopes: GOOGLE_SCOPES },
     });
-    const r: any = await SocialLogin.getAuthorizationCode({ provider: "google" });
+    const r = await SocialLogin.getAuthorizationCode({ provider: "google" });
     const accessToken = extractNativeAccessToken(r);
     if (!accessToken) throw new Error("Refresh returned no access token");
     saveNativeAccessToken(accessToken);
@@ -293,7 +310,7 @@ async function refreshTokenNativeOnce(): Promise<string | null> {
   // user manually signing in again.
   try {
     const SocialLogin = await getSocialLogin();
-    const login: any = await SocialLogin.login({
+    const login = await SocialLogin.login({
       provider: "google",
       options: {
         scopes: GOOGLE_SCOPES,
@@ -302,18 +319,18 @@ async function refreshTokenNativeOnce(): Promise<string | null> {
         autoSelectEnabled: true,
       },
     });
-    const result = login?.result;
+    const result = asRecord(login)?.result;
     const accessToken = extractNativeAccessToken(result);
     if (!accessToken) return null;
     saveNativeAccessToken(accessToken);
 
-    const profile = result?.profile;
-    if (profile?.email) {
+    const profile = asRecord(asRecord(result)?.profile);
+    if (typeof profile?.email === "string") {
       saveProfile({
         email: profile.email,
-        name: profile.name,
-        picture: profile.imageUrl,
-        sub: profile.id,
+        name: typeof profile.name === "string" ? profile.name : undefined,
+        picture: typeof profile.imageUrl === "string" ? profile.imageUrl : undefined,
+        sub: typeof profile.id === "string" ? profile.id : undefined,
       });
       _emitAuth();
     }

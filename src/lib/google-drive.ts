@@ -41,7 +41,9 @@ function loadToken(): StoredToken | null {
     if (!t?.access_token || !t.expires_at) return null;
     _token = t;
     return t;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function saveToken(t: StoredToken | null) {
@@ -56,7 +58,9 @@ export function getStoredProfile(): GoogleProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     return raw ? (JSON.parse(raw) as GoogleProfile) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function saveProfile(p: GoogleProfile | null) {
@@ -73,7 +77,9 @@ export function isSignedIn(): boolean {
 export function clearAuth() {
   saveToken(null);
   saveProfile(null);
-  try { localStorage.removeItem("hk_pkce_verifier"); } catch {}
+  try {
+    localStorage.removeItem("hk_pkce_verifier");
+  } catch {}
 }
 
 // ---------------- platform detection ----------------
@@ -137,7 +143,9 @@ async function signInWeb(opts?: { selectAccount?: boolean }): Promise<GoogleProf
           saveProfile(p);
           _emitAuth();
           resolve(p);
-        } catch (e) { reject(e); }
+        } catch (e) {
+          reject(e);
+        }
       },
       error_callback: (err: any) => reject(new Error(err?.message || "Sign-in cancelled")),
     });
@@ -167,7 +175,9 @@ async function refreshTokenWeb(): Promise<string | null> {
       });
       client.requestAccessToken();
     });
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // ---------------- native sign-in (Capgo Social Login plugin) ----------------
@@ -179,7 +189,7 @@ async function refreshTokenWeb(): Promise<string | null> {
 function randomString(n: number): string {
   const arr = new Uint8Array(n);
   crypto.getRandomValues(arr);
-  return Array.from(arr, b => ("0" + b.toString(16)).slice(-2)).join("");
+  return Array.from(arr, (b) => ("0" + b.toString(16)).slice(-2)).join("");
 }
 
 let _socialLoginInitialized = false;
@@ -334,7 +344,9 @@ export async function signOut(): Promise<void> {
     await signOutNative();
   } else if (t) {
     try {
-      await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, { method: "POST" });
+      await fetch(`https://oauth2.googleapis.com/revoke?token=${t.access_token}`, {
+        method: "POST",
+      });
     } catch {}
   }
   clearAuth();
@@ -357,7 +369,9 @@ export async function getAccessToken(): Promise<string> {
 // ---------------- auth event bus ----------------
 
 const _authListeners = new Set<() => void>();
-function _emitAuth() { _authListeners.forEach(l => l()); }
+function _emitAuth() {
+  _authListeners.forEach((l) => l());
+}
 export function onAuthChange(cb: () => void): () => void {
   _authListeners.add(cb);
   return () => _authListeners.delete(cb);
@@ -379,9 +393,7 @@ async function authedFetch(input: string, init: RequestInit = {}): Promise<Respo
   if (res.status === 401) {
     // Token rejected — force refresh and retry once.
     saveToken(null);
-    const fresh = isCapacitorNative()
-      ? await refreshTokenNative()
-      : await refreshTokenWeb();
+    const fresh = isCapacitorNative() ? await refreshTokenNative() : await refreshTokenWeb();
     if (fresh) res = await doFetch(fresh);
   }
   return res;

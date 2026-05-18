@@ -4,28 +4,39 @@ import { cn } from "@/lib/utils";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, inputMode, pattern, ...props }, ref) => {
-    // Android WebView (especially older System WebView versions) often ignores
-    // the `inputmode` attribute and falls back to a full QWERTY keyboard for
-    // `type="text"`. To guarantee the numeric IME on the built APK, we
-    // translate `inputMode="decimal" | "numeric"` to `type="tel"` (which
-    // *always* triggers a numeric IME on Android regardless of WebView
-    // version). `type="tel"` accepts any character in the value, so existing
-    // formatted amount strings (with commas / dots) still display correctly.
-    const wantsNumericIME = inputMode === "decimal" || inputMode === "numeric" || type === "number";
-    const isTel = type === "tel";
-    const resolvedType = wantsNumericIME ? "tel" : type;
+    // Keyboard hint mapping for Android WebView.
+    //
+    // Modern Android WebView (Chrome 66+, i.e. anything since 2018) honors the
+    // `inputmode` attribute and shows the matching software keyboard. Crucially,
+    // `inputmode="decimal"` gives the calculator-style numeric pad WITH a
+    // decimal point — what amount fields need. `type="tel"` would force the
+    // phone dialpad (digits + * #) which has NO decimal point on Gboard, so we
+    // do not coerce decimal inputs into `tel`.
+    //
+    // Rules:
+    //  - type="number"  → keep, also set inputmode="decimal" for safety.
+    //  - type="tel"     → keep (phone fields want the dialpad).
+    //  - inputMode set  → pass through unchanged; type defaults to "text".
+    const isPhone = type === "tel" || inputMode === "tel";
+    const wantsNumeric =
+      type === "number" ||
+      inputMode === "decimal" ||
+      inputMode === "numeric";
+
+    const resolvedType = type ?? (isPhone ? "tel" : "text");
     const resolvedInputMode =
-      inputMode ?? (type === "number" ? "decimal" : isTel ? "tel" : undefined);
+      inputMode ?? (type === "number" ? "decimal" : isPhone ? "tel" : undefined);
     const resolvedPattern =
-      pattern ?? (wantsNumericIME ? "[0-9]*[.,]?[0-9]*" : isTel ? "[0-9+ ()-]*" : undefined);
+      pattern ?? (wantsNumeric ? "[0-9]*[.,]?[0-9]*" : isPhone ? "[0-9+ ()-]*" : undefined);
+
     return (
       <input
         type={resolvedType}
         inputMode={resolvedInputMode}
         pattern={resolvedPattern}
-        autoCapitalize={wantsNumericIME || isTel ? "off" : props.autoCapitalize}
-        autoCorrect={wantsNumericIME || isTel ? "off" : (props as any).autoCorrect}
-        spellCheck={wantsNumericIME || isTel ? false : props.spellCheck}
+        autoCapitalize={wantsNumeric || isPhone ? "off" : props.autoCapitalize}
+        autoCorrect={wantsNumeric || isPhone ? "off" : (props as any).autoCorrect}
+        spellCheck={wantsNumeric || isPhone ? false : props.spellCheck}
         className={cn(
           "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           className,

@@ -2,15 +2,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowDownLeft, ArrowUpRight, FileText, Heart, Receipt, Settings as SettingsIcon,
+  ArrowDownLeft, ArrowUpRight, FileText, Heart, Pencil, Receipt, Settings as SettingsIcon,
   TrendingUp, User as UserIcon, Wallet,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { db, getAllBalances } from "@/lib/db";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { db, getAllBalances, updateSettings } from "@/lib/db";
+import { downscaleImage } from "@/lib/image";
 import { useCurrency } from "@/lib/hooks";
 import { useAuthUser } from "@/lib/sync";
 import { cn } from "@/lib/utils";
@@ -45,9 +51,36 @@ function Dashboard() {
   const holdTimer = useRef<number | null>(null);
   const holdFired = useRef(false);
 
+  const avatarFileRef = useRef<HTMLInputElement | null>(null);
+  const [nameOpen, setNameOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
   // Avoid flashing the dashboard before onboarding redirect on first launch.
   // Must be after all hooks to keep hook order stable (React error #310).
   if (!settings || !settings.onboarded) return null;
+
+  // Display priority: user-edited name > Google name > business name.
+  const displayName = settings.ownerName || user?.name || settings.businessName || "My Business";
+
+  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await downscaleImage(file, 256);
+      await updateSettings({ ownerAvatar: dataUrl });
+      toast.success("Profile picture updated");
+    } catch (err: any) {
+      toast.error(err?.message || "Couldn't update picture");
+    }
+  };
+
+  const saveName = async () => {
+    const v = nameDraft.trim();
+    await updateSettings({ ownerName: v || undefined });
+    setNameOpen(false);
+    toast.success("Name updated");
+  };
 
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
@@ -69,18 +102,46 @@ function Dashboard() {
     <AppShell>
       <header className="safe-top flex items-center justify-between px-5 pb-3 pt-2">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar className="h-11 w-11 shrink-0 border border-border">
-            {user?.picture && <AvatarImage src={user.picture} alt={user?.name || "You"} referrerPolicy="no-referrer" />}
-            <AvatarFallback className="bg-accent text-primary">
-              <UserIcon className="h-5 w-5" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
+          <button
+            type="button"
+            aria-label="Change profile picture"
+            onClick={() => { tapLight(); avatarFileRef.current?.click(); }}
+            className="relative shrink-0 rounded-full"
+          >
+            <Avatar className="h-11 w-11 border border-border">
+              {(settings?.ownerAvatar || user?.picture) && (
+                <AvatarImage
+                  src={settings?.ownerAvatar || user?.picture}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <AvatarFallback className="bg-accent text-primary">
+                <UserIcon className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground">
+              <Pencil className="h-2.5 w-2.5" />
+            </span>
+          </button>
+          <input
+            ref={avatarFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPickAvatar}
+          />
+          <button
+            type="button"
+            onClick={() => { tapLight(); setNameDraft(displayName); setNameOpen(true); }}
+            className="min-w-0 text-left"
+          >
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Welcome back</p>
-            <h1 className="truncate text-xl font-bold leading-tight">
-              {user?.name || settings?.businessName || "My Business"}
+            <h1 className="flex items-center gap-1.5 truncate text-xl font-bold leading-tight">
+              <span className="truncate">{displayName}</span>
+              <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             </h1>
-          </div>
+          </button>
         </div>
         <button
           type="button"
@@ -240,6 +301,38 @@ function Dashboard() {
           })}
         </div>
       </section>
+      <Dialog open={nameOpen} onOpenChange={setNameOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit your name</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={nameDraft}
+            onChange={e => setNameDraft(e.target.value)}
+            placeholder="Your name"
+            autoFocus
+            maxLength={60}
+          />
+          <p className="text-xs text-muted-foreground">
+            Shown on the home screen. Leave empty to use your Google account name.
+          </p>
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:flex-row">
+            {settings.ownerAvatar && (
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await updateSettings({ ownerAvatar: undefined });
+                  toast.success("Picture reset");
+                }}
+              >
+                Reset picture
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setNameOpen(false)}>Cancel</Button>
+            <Button onClick={saveName}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

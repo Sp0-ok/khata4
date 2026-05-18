@@ -81,6 +81,8 @@ export interface Settings {
   pinHash?: string;
   onboarded: boolean;
   logo?: string;
+  /** Custom avatar shown on Home (overrides Google profile picture). Data URL. */
+  ownerAvatar?: string;
   invoiceWatermark?: boolean;
   statementWatermark?: boolean;
   /** Where Capacitor saves PDFs / CSV exports. Asked once on first save. */

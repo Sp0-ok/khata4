@@ -79,6 +79,7 @@ if (existsSync(mainActivityPath)) {
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -92,6 +93,14 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    // Suppress Android WebView's long-press URL preview tooltip
+    // (e.g. "https://localhost/customers/new") that pops up over links.
+    WebView webView = getBridge().getWebView();
+    if (webView != null) {
+      webView.setLongClickable(false);
+      webView.setHapticFeedbackEnabled(false);
+      webView.setOnLongClickListener(v -> true);
+    }
   }
 
   @Override

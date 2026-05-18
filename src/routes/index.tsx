@@ -2,15 +2,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowDownLeft, ArrowUpRight, FileText, Heart, Receipt, Settings as SettingsIcon,
+  ArrowDownLeft, ArrowUpRight, FileText, Heart, Pencil, Receipt, Settings as SettingsIcon,
   TrendingUp, User as UserIcon, Wallet,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { db, getAllBalances } from "@/lib/db";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { db, getAllBalances, updateSettings } from "@/lib/db";
+import { downscaleImage } from "@/lib/image";
 import { useCurrency } from "@/lib/hooks";
 import { useAuthUser } from "@/lib/sync";
 import { cn } from "@/lib/utils";

@@ -67,10 +67,20 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <header className="safe-top flex items-start justify-between px-5 pb-3 pt-2">
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Hisaab Kitaab</p>
-          <h1 className="truncate text-2xl font-bold">{settings?.businessName || "My Business"}</h1>
+      <header className="safe-top flex items-center justify-between px-5 pb-3 pt-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar className="h-11 w-11 shrink-0 border border-border">
+            {user?.picture && <AvatarImage src={user.picture} alt={user?.name || "You"} referrerPolicy="no-referrer" />}
+            <AvatarFallback className="bg-accent text-primary">
+              <UserIcon className="h-5 w-5" />
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Welcome back</p>
+            <h1 className="truncate text-xl font-bold leading-tight">
+              {user?.name || settings?.businessName || "My Business"}
+            </h1>
+          </div>
         </div>
         <button
           type="button"

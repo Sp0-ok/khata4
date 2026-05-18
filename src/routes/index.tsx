@@ -301,6 +301,38 @@ function Dashboard() {
           })}
         </div>
       </section>
+      <Dialog open={nameOpen} onOpenChange={setNameOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit your name</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={nameDraft}
+            onChange={e => setNameDraft(e.target.value)}
+            placeholder="Your name"
+            autoFocus
+            maxLength={60}
+          />
+          <p className="text-xs text-muted-foreground">
+            Shown on the home screen. Leave empty to use your Google account name.
+          </p>
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:flex-row">
+            {settings.ownerAvatar && (
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await updateSettings({ ownerAvatar: undefined });
+                  toast.success("Picture reset");
+                }}
+              >
+                Reset picture
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setNameOpen(false)}>Cancel</Button>
+            <Button onClick={saveName}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

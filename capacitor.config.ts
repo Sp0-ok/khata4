@@ -9,7 +9,10 @@ const config: CapacitorConfig = {
     // Use https scheme so the WebView treats the asset bundle as a secure origin —
     // IndexedDB (Dexie) only persists reliably on a secure origin.
     allowMixedContent: false,
-    captureInput: true,
+    // captureInput intentionally false: when true, the WebView intercepts key
+    // events in a way that can suppress the software keyboard's input-mode
+    // hint (forcing the full QWERTY keyboard for numeric / decimal fields).
+    captureInput: false,
     webContentsDebuggingEnabled: false,
   },
   plugins: {

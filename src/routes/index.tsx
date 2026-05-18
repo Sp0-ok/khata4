@@ -51,9 +51,36 @@ function Dashboard() {
   const holdTimer = useRef<number | null>(null);
   const holdFired = useRef(false);
 
+  const avatarFileRef = useRef<HTMLInputElement | null>(null);
+  const [nameOpen, setNameOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
   // Avoid flashing the dashboard before onboarding redirect on first launch.
   // Must be after all hooks to keep hook order stable (React error #310).
   if (!settings || !settings.onboarded) return null;
+
+  // Display priority: user-edited name > Google name > business name.
+  const displayName = settings.ownerName || user?.name || settings.businessName || "My Business";
+
+  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await downscaleImage(file, 256);
+      await updateSettings({ ownerAvatar: dataUrl });
+      toast.success("Profile picture updated");
+    } catch (err: any) {
+      toast.error(err?.message || "Couldn't update picture");
+    }
+  };
+
+  const saveName = async () => {
+    const v = nameDraft.trim();
+    await updateSettings({ ownerName: v || undefined });
+    setNameOpen(false);
+    toast.success("Name updated");
+  };
 
   const receivable = (balances || []).filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const payable = (balances || []).filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);

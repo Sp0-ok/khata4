@@ -35,6 +35,7 @@ function Dashboard() {
     () => db.transactions.orderBy("createdAt").reverse().limit(8).toArray(), [],
   );
   const parties = useLiveQuery(() => db.parties.toArray(), []);
+  const { user } = useAuthUser();
 
   useEffect(() => {
     if (settings && !settings.onboarded) navigate({ to: "/onboarding", replace: true });

@@ -3,14 +3,16 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, FileText, Heart, Receipt, Settings as SettingsIcon,
-  TrendingUp, Wallet,
+  TrendingUp, User as UserIcon, Wallet,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db, getAllBalances } from "@/lib/db";
 import { useCurrency } from "@/lib/hooks";
+import { useAuthUser } from "@/lib/sync";
 import { cn } from "@/lib/utils";
 import { PartyPickerSheet } from "@/components/PartyPickerSheet";
 import { haptic, tapLight } from "@/lib/haptics";

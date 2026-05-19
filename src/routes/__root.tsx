@@ -124,7 +124,7 @@ function RootComponent() {
       <ThemeProvider>
         <RoutePreloader />
         <SyncMount />
-        <Outlet />
+        <TabTransitions><Outlet /></TabTransitions>
         <Toaster position="top-center" />
         <SaveFolderPicker />
       </ThemeProvider>

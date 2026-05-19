@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { SaveFolderPicker } from "@/components/SaveFolderPicker";
+import { TabTransitions } from "@/components/TabTransitions";
 import { useAutoSync } from "@/lib/sync";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,

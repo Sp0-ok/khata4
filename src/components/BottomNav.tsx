@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Home, Users, FileText, Receipt, BarChart3 } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const items: { to: string; label: string; icon: typeof Home; exact?: boolean }[] = [
@@ -27,11 +28,18 @@ export function BottomNav() {
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <span className={cn(
-                "flex h-8 w-12 items-center justify-center rounded-full transition-all",
-                active && "bg-accent"
-              )}>
-                <Icon className={cn("h-[18px] w-[18px]", active && "scale-110")} strokeWidth={active ? 2.4 : 2} />
+              <span className="relative flex h-8 w-12 items-center justify-center">
+                {active && (
+                  <motion.span
+                    layoutId="tab-pill"
+                    className="absolute inset-0 rounded-full bg-accent"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Icon
+                  className={cn("relative h-[18px] w-[18px]", active && "scale-110")}
+                  strokeWidth={active ? 2.4 : 2}
+                />
               </span>
               {label}
             </Link>

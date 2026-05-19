@@ -194,8 +194,7 @@ function Dashboard() {
       </AnimatePresence>
 
       <section className="px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        <div
           className="relative overflow-hidden rounded-3xl p-5 text-primary-foreground shadow-[var(--shadow-elevated)]"
           style={{
             background: net < 0 ? "var(--gradient-debit)" : "var(--gradient-credit)",
@@ -212,7 +211,7 @@ function Dashboard() {
             <Stat label="You'll get" value={format(receivable)} icon={<ArrowDownLeft className="h-4 w-4" />} />
             <Stat label="You'll give" value={format(payable)} icon={<ArrowUpRight className="h-4 w-4" />} />
           </div>
-        </motion.div>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3 px-4 pt-4">

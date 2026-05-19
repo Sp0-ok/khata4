@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 
 const TABS = ["/", "/customers", "/invoices", "/expenses", "/reports"] as const;
 
 function tabIndex(pathname: string): number {
   const p = pathname.replace(/\/$/, "") || "/";
   if (p === "/") return 0;
-  const idx = TABS.findIndex((t, i) => i > 0 && p.startsWith(t));
-  return idx;
+  for (let i = 1; i < TABS.length; i++) {
+    if (p.startsWith(TABS[i])) return i;
+  }
+  return -1;
 }
 
 export function TabTransitions({ children }: { children: ReactNode }) {
@@ -16,73 +17,114 @@ export function TabTransitions({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const currentIdx = tabIndex(loc.pathname);
   const isTab = currentIdx >= 0;
-  const prevIdxRef = useRef<number>(currentIdx >= 0 ? currentIdx : 0);
-  const [direction, setDirection] = useState(0);
 
-  useEffect(() => {
-    if (currentIdx >= 0) {
-      const prev = prevIdxRef.current;
-      setDirection(currentIdx > prev ? 1 : currentIdx < prev ? -1 : 0);
-      prevIdxRef.current = currentIdx;
-    }
-  }, [currentIdx]);
-
-  // Swipe gesture — only when on a tab route.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
-  const swiped = useRef(false);
+  const dragging = useRef(false);
+  const decided = useRef(false);
+  const widthRef = useRef(0);
+  const [dragX, setDragX] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  // Reset transform when route changes (tap or post-swipe).
+  useEffect(() => {
+    setDragX(0);
+    setAnimating(false);
+  }, [currentIdx]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (!isTab) return;
     const t = e.touches[0];
+    // Ignore edge swipes (Android back gesture).
+    if (t.clientX < 20 || t.clientX > window.innerWidth - 20) return;
     startX.current = t.clientX;
     startY.current = t.clientY;
-    swiped.current = false;
+    dragging.current = false;
+    decided.current = false;
+    widthRef.current = wrapperRef.current?.clientWidth ?? window.innerWidth;
+    setAnimating(false);
   };
+
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!isTab || swiped.current || startX.current == null || startY.current == null) return;
+    if (!isTab || startX.current == null || startY.current == null) return;
     const t = e.touches[0];
     const dx = t.clientX - startX.current;
     const dy = t.clientY - startY.current;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    // Ignore edge swipes — Android back gesture territory.
-    if (startX.current < 24 || startX.current > window.innerWidth - 24) return;
-    const next = dx < 0 ? currentIdx + 1 : currentIdx - 1;
-    if (next < 0 || next >= TABS.length) return;
-    swiped.current = true;
-    navigate({ to: TABS[next] as any, replace: true });
+
+    if (!decided.current) {
+      // Need ~10px of motion before we decide horizontal vs vertical.
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+        dragging.current = true;
+      }
+      decided.current = true;
+    }
+
+    if (!dragging.current) return;
+
+    // Resist past first/last tab.
+    let delta = dx;
+    if ((currentIdx === 0 && delta > 0) || (currentIdx === TABS.length - 1 && delta < 0)) {
+      delta = delta / 3;
+    }
+    setDragX(delta);
   };
+
   const onTouchEnd = () => {
+    if (!isTab) return;
+    const wasDragging = dragging.current;
+    const dx = dragX;
     startX.current = null;
     startY.current = null;
+    dragging.current = false;
+    decided.current = false;
+
+    if (!wasDragging) return;
+
+    const width = widthRef.current || window.innerWidth;
+    const threshold = width * 0.4;
+
+    if (dx <= -threshold && currentIdx < TABS.length - 1) {
+      // Snap forward to next tab.
+      setAnimating(true);
+      setDragX(-width);
+      window.setTimeout(() => {
+        navigate({ to: TABS[currentIdx + 1] as any, replace: true });
+      }, 150);
+    } else if (dx >= threshold && currentIdx > 0) {
+      setAnimating(true);
+      setDragX(width);
+      window.setTimeout(() => {
+        navigate({ to: TABS[currentIdx - 1] as any, replace: true });
+      }, 150);
+    } else {
+      // Snap back.
+      setAnimating(true);
+      setDragX(0);
+      window.setTimeout(() => setAnimating(false), 160);
+    }
   };
 
   if (!isTab) return <>{children}</>;
 
   return (
-    <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      className="relative overflow-x-hidden"
-    >
-      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-        <motion.div
-          key={currentIdx}
-          custom={direction}
-          variants={{
-            enter: (d: number) => ({ x: d === 0 ? 0 : d > 0 ? "100%" : "-100%", opacity: 0.6 }),
-            center: { x: 0, opacity: 1 },
-            exit: (d: number) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.6 }),
-          }}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+    <div ref={wrapperRef} className="relative overflow-x-hidden">
+      <div
+        ref={contentRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+        style={{
+          transform: `translate3d(${dragX}px, 0, 0)`,
+          transition: animating ? "transform 150ms ease-out" : "none",
+          willChange: "transform",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

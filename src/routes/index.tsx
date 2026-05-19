@@ -106,7 +106,7 @@ function Dashboard() {
             type="button"
             aria-label="Change profile picture"
             onClick={() => { tapLight(); avatarFileRef.current?.click(); }}
-            className="relative shrink-0 rounded-full"
+            className="shrink-0 rounded-full"
           >
             <Avatar className="h-11 w-11 border border-border">
               {(settings?.ownerAvatar || user?.picture) && (
@@ -120,9 +120,6 @@ function Dashboard() {
                 <UserIcon className="h-5 w-5" />
               </AvatarFallback>
             </Avatar>
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground">
-              <Pencil className="h-2.5 w-2.5" />
-            </span>
           </button>
           <input
             ref={avatarFileRef}
@@ -137,10 +134,7 @@ function Dashboard() {
             className="min-w-0 text-left"
           >
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Welcome back</p>
-            <h1 className="flex items-center gap-1.5 truncate text-xl font-bold leading-tight">
-              <span className="truncate">{displayName}</span>
-              <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            </h1>
+            <h1 className="truncate text-xl font-bold leading-tight">{displayName}</h1>
           </button>
         </div>
         <button

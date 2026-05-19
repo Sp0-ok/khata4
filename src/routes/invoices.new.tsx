@@ -102,7 +102,7 @@ function NewInvoice() {
           notes: notes.trim() || undefined,
         });
         toast.success("Invoice updated");
-        navigate({ to: "/invoices/$id", params: { id: String(editId) } });
+        navigate({ to: "/invoices/$id", params: { id: String(editId) }, replace: true });
       } else {
         const id = await db.invoices.add({
           number: number || (await nextInvoiceNumber()),
@@ -121,7 +121,7 @@ function NewInvoice() {
         const s = await getSettings();
         if (s.id) await db.settings.update(s.id, { invoiceCounter: (s.invoiceCounter || 1) + 1 });
         toast.success("Invoice created");
-        navigate({ to: "/invoices/$id", params: { id: String(id) } });
+        navigate({ to: "/invoices/$id", params: { id: String(id) }, replace: true });
       }
     } catch (err: any) {
       toast.error(err.message || "Failed");

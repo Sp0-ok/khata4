@@ -78,7 +78,7 @@ function CustomerDetail() {
       await db.parties.delete(pid);
     });
     toast.success("Party deleted");
-    navigate({ to: "/customers" });
+    navigate({ to: "/customers", replace: true });
   };
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {

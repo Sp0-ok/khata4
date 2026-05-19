@@ -45,7 +45,7 @@ function Onboarding() {
       onboarded: true,
     });
     markFirstRunSeen();
-    navigate({ to: "/" });
+    navigate({ to: "/", replace: true });
   };
 
   const handleSignIn = async () => {

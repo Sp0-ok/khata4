@@ -51,7 +51,7 @@ function NewParty() {
         createdAt: now, updatedAt: now,
       });
       toast.success("Party added");
-      navigate({ to: "/customers/$id", params: { id: String(id) } });
+      navigate({ to: "/customers/$id", params: { id: String(id) }, replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     } finally {

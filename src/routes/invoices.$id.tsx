@@ -85,7 +85,7 @@ function InvoiceDetail() {
   const onDelete = async () => {
     await db.invoices.delete(iid);
     toast.success("Invoice deleted");
-    navigate({ to: "/invoices" });
+    navigate({ to: "/invoices", replace: true });
   };
 
   const onPDF = async () => {

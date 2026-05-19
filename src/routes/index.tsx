@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowDownLeft, ArrowUpRight, FileText, Heart, Pencil, Receipt, Settings as SettingsIcon,
+  ArrowDownLeft, ArrowUpRight, FileText, Heart, Receipt, Settings as SettingsIcon,
   TrendingUp, User as UserIcon, Wallet,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

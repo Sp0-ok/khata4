@@ -98,7 +98,10 @@ function RootComponent() {
     return () => document.removeEventListener("contextmenu", stop);
   }, []);
 
-  // Native Android back button: exit if at a top-level tab, otherwise go back.
+  // Native Android back button: exit if at a top-level tab, otherwise use
+  // the router's own history so we stay in sync with TanStack Router (avoids
+  // duplicate WebView history entries that required multiple back presses).
+  const router = useRouter();
   useEffect(() => {
     const cap = (window as any).Capacitor;
     if (!cap?.isNativePlatform?.()) return;
@@ -111,13 +114,17 @@ function RootComponent() {
         const path = window.location.pathname.replace(/\/$/, "") || "/";
         if (TOP.has(path)) {
           App.exitApp();
+          return;
+        }
+        if (router.history.canGoBack?.() ?? true) {
+          router.history.back();
         } else {
-          window.history.back();
+          router.navigate({ to: "/" as any, replace: true });
         }
       }).then(s => { sub = s; });
     }).catch(() => undefined);
     return () => { cancelled = true; sub?.remove?.(); };
-  }, []);
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>

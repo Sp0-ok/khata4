@@ -110,9 +110,10 @@ export function TabTransitions({ children }: { children: ReactNode }) {
   if (!isTab) return <>{children}</>;
 
   return (
-    <div ref={wrapperRef} className="relative overflow-x-hidden">
+    <div ref={wrapperRef} className="relative overflow-x-hidden min-h-screen">
       <div
         ref={contentRef}
+        className="min-h-screen"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

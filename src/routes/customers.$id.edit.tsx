@@ -71,7 +71,7 @@ function EditParty() {
         updatedAt: Date.now(),
       });
       toast.success("Party updated");
-      navigate({ to: "/customers/$id", params: { id } });
+      navigate({ to: "/customers/$id", params: { id }, replace: true });
     } catch (err: any) { toast.error(err.message || "Failed"); }
     finally { setSaving(false); }
   };

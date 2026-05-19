@@ -91,7 +91,7 @@ function NewExpense() {
         await db.expenses.add({ ...payload, createdAt: Date.now() });
         toast.success("Expense saved");
       }
-      navigate({ to: "/expenses" });
+      navigate({ to: "/expenses", replace: true });
     } catch (err: any) {
       toast.error(err.message || "Failed");
     } finally { setSaving(false); }
